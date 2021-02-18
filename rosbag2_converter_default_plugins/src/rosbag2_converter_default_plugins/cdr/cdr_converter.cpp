@@ -61,7 +61,7 @@ std::string get_package_library_path(const std::string & package_name)
 
 CdrConverter::CdrConverter()
 {
-  auto library_path = get_package_library_path("rmw_fastrtps_cpp");
+  auto library_path = get_package_library_path("fastcdr");
   try {
     library = std::make_shared<rcpputils::SharedLibrary>(library_path);
   } catch (std::runtime_error &) {

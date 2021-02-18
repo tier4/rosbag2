@@ -22,14 +22,14 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(fastcdr QUIET)
 find_package(pluginlib REQUIRED)
 find_package(rcpputils REQUIRED)
 find_package(rmw REQUIRED)
-find_package(rmw_fastrtps_cpp QUIET)
 find_package(rosbag2_cpp REQUIRED)
 find_package(rosidl_runtime_cpp REQUIRED)
 
-if(rmw_fastrtps_cpp_FOUND)
+if(fastcdr_FOUND)
   add_library(${PROJECT_NAME} SHARED
     src/rosbag2_converter_default_plugins/cdr/cdr_converter.cpp)
 
@@ -72,14 +72,14 @@ if(rmw_fastrtps_cpp_FOUND)
       ament_target_dependencies(test_cdr_converter
         pluginlib
         rcutils
-        rmw_fastrtps_cpp
+        fastcdr
         rosbag2_cpp
         rosbag2_test_common
         test_msgs)
     endif()
   endif()
 else()
-  message(STATUS "Skipping [${PROJECT_NAME}]. rmw_fastrtps_cpp isn't available.")
+  message(STATUS "Skipping [${PROJECT_NAME}]. fastcdr isn't available.")
 endif()
 
 ament_package()
