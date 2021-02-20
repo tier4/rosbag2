@@ -20,8 +20,8 @@
 #include "ament_index_cpp/get_resources.hpp"
 #include "ament_index_cpp/get_package_prefix.hpp"
 
-#include "rcpputils/shared_library.hpp"
-#include "rcutils/strdup.h"
+#include "fastcdr/Cdr.h"
+#include "fastcdr/FastBuffer.h"
 
 #include "rosbag2_cpp/types.hpp"
 
@@ -32,67 +32,8 @@
 namespace rosbag2_converter_default_plugins
 {
 
-inline
-std::string get_package_library_path(const std::string & package_name)
-{
-  const char * filename_prefix;
-  const char * filename_extension;
-  const char * dynamic_library_folder;
-#ifdef _WIN32
-  filename_prefix = "";
-  filename_extension = ".dll";
-  dynamic_library_folder = "/bin/";
-#elif __APPLE__
-  filename_prefix = "lib";
-  filename_extension = ".dylib";
-  dynamic_library_folder = "/lib/";
-#else
-  filename_prefix = "lib";
-  filename_extension = ".so";
-  dynamic_library_folder = "/lib/";
-#endif
-
-  auto package_prefix = ament_index_cpp::get_package_prefix(package_name);
-  auto library_path = package_prefix + dynamic_library_folder + filename_prefix +
-    package_name + filename_extension;
-
-  return library_path;
-}
-
 CdrConverter::CdrConverter()
 {
-  auto library_path = get_package_library_path("fastcdr");
-  try {
-    library = std::make_shared<rcpputils::SharedLibrary>(library_path);
-  } catch (std::runtime_error &) {
-    throw std::runtime_error(
-            std::string("rcpputils exception: library could not be found:") + library_path);
-  }
-
-  std::string serialize_symbol = "rmw_serialize";
-  std::string deserialize_symbol = "rmw_deserialize";
-
-  if (!library->has_symbol(serialize_symbol.c_str())) {
-    throw std::runtime_error{std::string("rcutils exception: symbol not found: ") +
-            serialize_symbol};
-  }
-
-  if (!library->has_symbol(deserialize_symbol.c_str())) {
-    throw std::runtime_error{
-            std::string("rcutils exception: symbol not found: ") + deserialize_symbol};
-  }
-
-  serialize_fcn_ = (decltype(serialize_fcn_))library->get_symbol(serialize_symbol.c_str());
-  if (!serialize_fcn_) {
-    throw std::runtime_error{
-            std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol};
-  }
-
-  deserialize_fcn_ = (decltype(deserialize_fcn_))library->get_symbol(deserialize_symbol.c_str());
-  if (!deserialize_fcn_) {
-    throw std::runtime_error{
-            std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol};
-  }
 }
 
 void CdrConverter::deserialize(
@@ -100,12 +41,24 @@ void CdrConverter::deserialize(
   const rosidl_message_type_support_t * type_support,
   std::shared_ptr<rosbag2_cpp::rosbag2_introspection_message_t> introspection_message)
 {
+  if (type_support == nullptr) {
+    return;
+  }
+
   rosbag2_cpp::introspection_message_set_topic_name(
     introspection_message.get(), serialized_message->topic_name.c_str());
   introspection_message->time_stamp = serialized_message->time_stamp;
 
-  auto ret = deserialize_fcn_(
-    serialized_message->serialized_data.get(), type_support, introspection_message->message);
+  auto data = serialized_message->serialized_data;
+  eprosima::fastcdr::FastBuffer buffer(
+    reinterpret_cast<char *>(data->buffer), data->buffer_length);
+  eprosima::fastcdr::Cdr deser(buffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
+    eprosima::fastcdr::Cdr::DDS_CDR);
+
+  // auto callbacks = static_cast<const message_type_support_callbacks_t *>(ts->data);
+  // MessageTypeSupport_cpp tss{callbacks};
+  auto ret = RMW_RET_OK; // tss.deserializeROSmessage(deser, ros_message, callbacks);
+
   if (ret != RMW_RET_OK) {
     ROSBAG2_CONVERTER_DEFAULT_PLUGINS_LOG_ERROR("Failed to deserialize message.");
   }
@@ -119,8 +72,38 @@ void CdrConverter::serialize(
   serialized_message->topic_name = std::string(introspection_message->topic_name);
   serialized_message->time_stamp = introspection_message->time_stamp;
 
-  auto ret = serialize_fcn_(
-    introspection_message->message, type_support, serialized_message->serialized_data.get());
+  if (type_support == nullptr) {
+    return;
+  }
+
+
+  auto data = serialized_message->serialized_data;
+  eprosima::fastcdr::FastBuffer buffer(
+    reinterpret_cast<char *>(data->buffer), data->buffer_length);
+
+  eprosima::fastcdr::Cdr ser(
+    buffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN, eprosima::fastcdr::Cdr::DDS_CDR);
+
+  // auto callbacks = static_cast<const message_type_support_callbacks_t *>(ts->data);
+  // auto tss = std::make_unique<MessageTypeSupport_cpp>(callbacks);
+  // auto data_length = tss->getEstimatedSerializedSize(ros_message, callbacks);
+  // if (serialized_message->buffer_capacity < data_length) {
+  //   if (rmw_serialized_message_resize(serialized_message, data_length) != RMW_RET_OK) {
+  //     RMW_SET_ERROR_MSG("unable to dynamically resize serialized message");
+  //     return RMW_RET_ERROR;
+  //   }
+  // }
+  //
+  // eprosima::fastcdr::FastBuffer buffer(
+  //   reinterpret_cast<char *>(serialized_message->buffer), data_length);
+  // eprosima::fastcdr::Cdr ser(
+  //   buffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN, eprosima::fastcdr::Cdr::DDS_CDR);
+  //
+  // auto ret = tss->serializeROSmessage(ros_message, ser, callbacks);
+  // serialized_message->buffer_length = data_length;
+  // serialized_message->buffer_capacity = data_length;
+  auto ret = RMW_RET_OK;
+
   if (ret != RMW_RET_OK) {
     ROSBAG2_CONVERTER_DEFAULT_PLUGINS_LOG_ERROR("Failed to serialize message.");
   }

@@ -22,64 +22,63 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_package(fastcdr QUIET)
+find_package(fastcdr REQUIRED CONFIG)
 find_package(pluginlib REQUIRED)
 find_package(rcpputils REQUIRED)
 find_package(rmw REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(rosidl_runtime_cpp REQUIRED)
 
-if(fastcdr_FOUND)
-  add_library(${PROJECT_NAME} SHARED
-    src/rosbag2_converter_default_plugins/cdr/cdr_converter.cpp)
+add_library(${PROJECT_NAME} SHARED
+  src/rosbag2_converter_default_plugins/cdr/cdr_converter.cpp)
 
-  ament_target_dependencies(${PROJECT_NAME}
-    ament_index_cpp
-    pluginlib
-    rcpputils
-    rmw
-    rosbag2_cpp
-    rosidl_runtime_cpp)
+ament_target_dependencies(${PROJECT_NAME}
+  ament_index_cpp
+  pluginlib
+  rcpputils
+  rmw
+  rosbag2_cpp
+  rosidl_runtime_cpp)
 
-  target_include_directories(${PROJECT_NAME}
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${fastcdr_INCLUDE_DIR})
 
-  pluginlib_export_plugin_description_file(rosbag2_cpp plugin_description.xml)
+# target_link_libraries(${PROJECT_NAME} )
 
-  install(
-    TARGETS ${PROJECT_NAME}
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin)
+pluginlib_export_plugin_description_file(rosbag2_cpp plugin_description.xml)
 
-  if(BUILD_TESTING)
-    find_package(ament_cmake_gmock REQUIRED)
-    find_package(ament_lint_auto REQUIRED)
-    find_package(rcutils REQUIRED)
-    find_package(rosbag2_cpp REQUIRED)
-    find_package(rosbag2_test_common REQUIRED)
-    find_package(test_msgs REQUIRED)
+install(
+  TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
-    ament_lint_auto_find_test_dependencies()
+if(FALSE)
+  find_package(ament_cmake_gmock REQUIRED)
+  find_package(ament_lint_auto REQUIRED)
+  find_package(rcutils REQUIRED)
+  find_package(rosbag2_cpp REQUIRED)
+  find_package(rosbag2_test_common REQUIRED)
+  find_package(test_msgs REQUIRED)
 
-    ament_add_gmock(test_cdr_converter
-      test/rosbag2_converter_default_plugins/cdr/test_cdr_converter.cpp
-      src/rosbag2_converter_default_plugins/cdr/cdr_converter.cpp
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(TARGET test_cdr_converter)
-      ament_target_dependencies(test_cdr_converter
-        pluginlib
-        rcutils
-        fastcdr
-        rosbag2_cpp
-        rosbag2_test_common
-        test_msgs)
-    endif()
+  ament_lint_auto_find_test_dependencies()
+
+  ament_add_gmock(test_cdr_converter
+    test/rosbag2_converter_default_plugins/cdr/test_cdr_converter.cpp
+    src/rosbag2_converter_default_plugins/cdr/cdr_converter.cpp
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  if(TARGET test_cdr_converter)
+    ament_target_dependencies(test_cdr_converter
+      pluginlib
+      rcutils
+      fastcdr
+      rosbag2_cpp
+      rosbag2_test_common
+      test_msgs)
   endif()
-else()
-  message(STATUS "Skipping [${PROJECT_NAME}]. fastcdr isn't available.")
 endif()
 
 ament_package()
