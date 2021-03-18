@@ -17,4 +17,14 @@
 
 #include "rosbag2_cpp/types/introspection_message.hpp"
 
+namespace rosbag2_cpp
+{
+class NotImplementedError : public std::logic_error
+{
+public:
+  NotImplementedError()
+  : std::logic_error("Function not yet implemented") {}
+};
+}  // namespace rosbag2_cpp
+
 #endif  // ROSBAG2_CPP__TYPES_HPP_

@@ -26,11 +26,12 @@
 
 #include "rclcpp/qos.hpp"
 
+#include "rosbag2_cpp/player_clock.hpp"
 #include "rosbag2_transport/play_options.hpp"
 
 #include "replayable_message.hpp"
 
-using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
+using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
 
 namespace rosbag2_cpp
 {
@@ -48,7 +49,8 @@ class Player
 public:
   explicit Player(
     std::shared_ptr<rosbag2_cpp::Reader> reader,
-    std::shared_ptr<Rosbag2Node> rosbag2_transport);
+    std::shared_ptr<Rosbag2Node> rosbag2_transport,
+    std::unique_ptr<rosbag2_cpp::PlayerClock> clock);
 
   void play(const PlayOptions & options);
 
@@ -65,11 +67,12 @@ private:
 
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
   moodycamel::ReaderWriterQueue<ReplayableMessage> message_queue_;
-  std::chrono::time_point<std::chrono::system_clock> start_time_;
+  TimePoint start_time_;
   mutable std::future<void> storage_loading_future_;
   std::shared_ptr<Rosbag2Node> rosbag2_transport_;
   std::unordered_map<std::string, std::shared_ptr<GenericPublisher>> publishers_;
   std::unordered_map<std::string, rclcpp::QoS> topic_qos_profile_overrides_;
+  std::unique_ptr<rosbag2_cpp::PlayerClock> clock_;
 };
 
 }  // namespace rosbag2_transport

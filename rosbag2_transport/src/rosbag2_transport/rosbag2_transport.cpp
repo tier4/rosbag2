@@ -95,7 +95,8 @@ void Rosbag2Transport::play(
   try {
     auto transport_node =
       setup_node(play_options.node_prefix, play_options.topic_remapping_options);
-    Player player(reader_, transport_node);
+    auto clock = std::make_unique<rosbag2_cpp::PlayerClock>(false);
+    Player player(reader_, transport_node, std::move(clock));
     do {
       reader_->open(storage_options, {"", rmw_get_serialization_format()});
       player.play(play_options);

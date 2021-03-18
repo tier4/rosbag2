@@ -78,8 +78,10 @@ const std::chrono::milliseconds
 Player::queue_read_wait_period_ = std::chrono::milliseconds(100);
 
 Player::Player(
-  std::shared_ptr<rosbag2_cpp::Reader> reader, std::shared_ptr<Rosbag2Node> rosbag2_transport)
-: reader_(std::move(reader)), rosbag2_transport_(rosbag2_transport)
+  std::shared_ptr<rosbag2_cpp::Reader> reader,
+  std::shared_ptr<Rosbag2Node> rosbag2_transport,
+  std::unique_ptr<rosbag2_cpp::PlayerClock> clock)
+: reader_(std::move(reader)), rosbag2_transport_(rosbag2_transport), clock_(std::move(clock))
 {}
 
 bool Player::is_storage_completely_loaded() const
@@ -158,7 +160,7 @@ void Player::enqueue_up_to_boundary(const TimePoint & time_first_message, uint64
 
 void Player::play_messages_from_queue(const PlayOptions & options)
 {
-  start_time_ = std::chrono::system_clock::now();
+  start_time_ = clock_->now();
   do {
     play_messages_until_queue_empty(options);
     if (!is_storage_completely_loaded() && rclcpp::ok()) {
@@ -180,9 +182,9 @@ void Player::play_messages_until_queue_empty(const PlayOptions & options)
   }
 
   while (message_queue_.try_dequeue(message) && rclcpp::ok()) {
-    std::this_thread::sleep_until(
+    clock_->sleep_until(
       start_time_ + std::chrono::duration_cast<std::chrono::nanoseconds>(
-        1.0 / rate * message.time_since_start));
+        1.0 / rate * message.time_since_start), rclcpp::Duration::from_nanoseconds(1000000));
     if (rclcpp::ok()) {
       auto publisher_iter = publishers_.find(message.message->topic_name);
       if (publisher_iter != publishers_.end()) {

@@ -45,6 +45,7 @@ find_package(rosidl_runtime_c REQUIRED)
 find_package(rosidl_runtime_cpp REQUIRED)
 find_package(rosidl_typesupport_cpp REQUIRED)
 find_package(rosidl_typesupport_introspection_cpp REQUIRED)
+find_package(rclcpp REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/rosbag2_cpp/cache/cache_consumer.cpp
@@ -52,6 +53,7 @@ add_library(${PROJECT_NAME} SHARED
   src/rosbag2_cpp/cache/message_cache.cpp
   src/rosbag2_cpp/converter.cpp
   src/rosbag2_cpp/info.cpp
+  src/rosbag2_cpp/player_clock.cpp
   src/rosbag2_cpp/reader.cpp
   src/rosbag2_cpp/readers/sequential_reader.cpp
   src/rosbag2_cpp/rmw_implemented_serialization_format_converter.cpp
@@ -66,6 +68,7 @@ ament_target_dependencies(${PROJECT_NAME}
   ament_index_cpp
   pluginlib
   rcpputils
+  rclcpp
   rcutils
   rmw
   rmw_implementation
@@ -104,6 +107,7 @@ ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_targets(export_${PROJECT_NAME})
 ament_export_dependencies(pluginlib
+  rclcpp
   rmw
   rmw_implementation
   rosbag2_storage
