@@ -33,11 +33,11 @@
 #include "rosbag2_cpp/writers/sequential_writer.hpp"
 
 #include "rosbag2_transport/logging.hpp"
+#include "rosbag2_transport/rosbag2_node.hpp"
 
 #include "formatter.hpp"
 #include "player.hpp"
 #include "recorder.hpp"
-#include "rosbag2_node.hpp"
 
 namespace rosbag2_transport
 {

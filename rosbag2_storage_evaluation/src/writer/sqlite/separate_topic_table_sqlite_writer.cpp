@@ -24,11 +24,12 @@ SeparateTopicTableSqliteWriter::SeparateTopicTableSqliteWriter(
   unsigned int const messages_per_transaction,
   Indices const & indices,
   Pragmas const & pragmas
-) : SqliteWriter(
-  filename, messages_per_transaction, {{"MESSAGES", "TIMESTAMP"},
-                                       {"MESSAGES", "TOPIC_ID"},
-                                       {"TOPICS",   "TOPIC"}},
-  pragmas)
+)
+: SqliteWriter(
+    filename, messages_per_transaction, {{"MESSAGES", "TIMESTAMP"},
+      {"MESSAGES", "TOPIC_ID"},
+      {"TOPICS", "TOPIC"}},
+    pragmas)
 {}
 
 void SeparateTopicTableSqliteWriter::close()
@@ -42,12 +43,14 @@ void SeparateTopicTableSqliteWriter::close()
 
 void SeparateTopicTableSqliteWriter::initialize_tables(sqlite::DBPtr db)
 {
-  sqlite::create_table(db, "TOPICS", {
+  sqlite::create_table(
+    db, "TOPICS", {
     "ID INTEGER PRIMARY KEY", // This is an alias for ROWID
     "TOPIC TEXT NOT NULL"
   });
 
-  sqlite::create_table(db, "MESSAGES", {
+  sqlite::create_table(
+    db, "MESSAGES", {
     "TIMESTAMP INTEGER NOT NULL",
     "TOPIC_ID INTEGER NOT NULL",
     "DATA BLOB NOT NULL"

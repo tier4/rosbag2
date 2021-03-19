@@ -24,23 +24,23 @@
 namespace ros2bag
 {
 
-class MessageWriter
-{
+  class MessageWriter
+  {
 public:
-  MessageWriter() = default;
+    MessageWriter() = default;
 
-  virtual ~MessageWriter() = default;
+    virtual ~MessageWriter() = default;
 
-  virtual void open() = 0;
+    virtual void open() = 0;
 
-  virtual void close() = 0;
+    virtual void close() = 0;
 
-  virtual void write(MessagePtr message) = 0;
+    virtual void write(MessagePtr message) = 0;
 
-  virtual void create_index() = 0;
+    virtual void create_index() = 0;
 
-  virtual void reset() = 0;
-};
+    virtual void reset() = 0;
+  };
 
 }
 

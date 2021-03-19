@@ -38,14 +38,14 @@ void run_benchmark(
 {
 
   std::vector<std::pair<std::string, std::string>> meta_data = {
-    {"description",                      description},
-    {"number of small messages",         std::to_string(number_of_small_messages * loop_count)},
-    {"small message blob size (bytes)",  std::to_string(small_message_blob_size)},
-    {"number of medium messages",        std::to_string(number_of_medium_messages * loop_count)},
+    {"description", description},
+    {"number of small messages", std::to_string(number_of_small_messages * loop_count)},
+    {"small message blob size (bytes)", std::to_string(small_message_blob_size)},
+    {"number of medium messages", std::to_string(number_of_medium_messages * loop_count)},
     {"medium message blob size (bytes)", std::to_string(medium_message_blob_size)},
-    {"number of big messages",           std::to_string(number_of_big_messages * loop_count)},
-    {"big message blob size (bytes)",    std::to_string(big_message_blob_size)},
-    {"transaction size",                 std::to_string(transaction_size)}
+    {"number of big messages", std::to_string(number_of_big_messages * loop_count)},
+    {"big message blob size (bytes)", std::to_string(big_message_blob_size)},
+    {"transaction size", std::to_string(transaction_size)}
   };
 
   MessageGenerator::Specification specification;
@@ -129,17 +129,19 @@ int main(int argc, char ** argv)
   auto const loop_count = 300; // gives roughly 10GB
 
 
-
-  run_benchmark_repeatedly(3,
+  run_benchmark_repeatedly(
+    3,
     "OneTableSqlite",
     std::make_shared<OneTableSqliteWriter>(
       db_name,
       transaction_size,
-      Indices({{"MESSAGES", "TIMESTAMP"},
-               {"MESSAGES", "TOPIC"}}),
+      Indices(
+        {{"MESSAGES", "TIMESTAMP"},
+          {"MESSAGES", "TOPIC"}}),
       // Setting to "journal_mode" to "OFF" increases writing speed, but turns off transactions.
-      Pragmas({{"journal_mode", "MEMORY"},
-               {"synchronous",  "OFF"}})
+      Pragmas(
+        {{"journal_mode", "MEMORY"},
+          {"synchronous", "OFF"}})
     ),
     db_name,
     loop_count,
@@ -150,18 +152,21 @@ int main(int argc, char ** argv)
     big_messages,
     big_message_blob_size, transaction_size, write_header);
 
-  run_benchmark_repeatedly(5,
+  run_benchmark_repeatedly(
+    5,
     "SeparateTopicTableSqlite",
     std::make_shared<SeparateTopicTableSqliteWriter>(
       db_name,
       transaction_size,
-      Indices({{"MESSAGES", "TIMESTAMP"},
-               {"MESSAGES", "TOPIC_ID"},
-               {"TOPICS",   "TOPIC"}}),
+      Indices(
+        {{"MESSAGES", "TIMESTAMP"},
+          {"MESSAGES", "TOPIC_ID"},
+          {"TOPICS", "TOPIC"}}),
       // Setting to "journal_mode" to "OFF" increases writing speed, but turns off transactions.
-      Pragmas({{"foreign_keys", "ON"},
-               {"journal_mode", "MEMORY"},
-               {"synchronous",  "OFF"}})
+      Pragmas(
+        {{"foreign_keys", "ON"},
+          {"journal_mode", "MEMORY"},
+          {"synchronous", "OFF"}})
     ),
     db_name,
     loop_count,
@@ -174,4 +179,3 @@ int main(int argc, char ** argv)
 
   return EXIT_SUCCESS;
 }
-

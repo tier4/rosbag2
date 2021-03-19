@@ -22,4 +22,3 @@ void MessageStreamWriter::write(MessagePtr message)
 {
   output_stream_ << *message << std::endl;
 }
-

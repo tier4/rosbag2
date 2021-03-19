@@ -27,14 +27,13 @@
 
 #include "rosbag2_transport/logging.hpp"
 #include "rosbag2_transport/storage_options.hpp"
+#include "rosbag2_transport/rosbag2_node.hpp"
 
 #include "test_msgs/message_fixtures.hpp"
 #include "test_msgs/msg/basic_types.hpp"
 
 #include "qos.hpp"
 #include "recorder.hpp"
-#include "rosbag2_node.hpp"
-
 #include "mock_sequential_writer.hpp"
 
 using namespace ::testing;  // NOLINT

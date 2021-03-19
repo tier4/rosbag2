@@ -93,4 +93,3 @@ void SqliteWriter::set_pragmas()
     sqlite::set_pragma(db_, name, value);
   }
 }
-

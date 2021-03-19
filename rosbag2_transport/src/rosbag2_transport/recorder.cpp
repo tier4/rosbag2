@@ -26,10 +26,9 @@
 #include "rosbag2_cpp/writer.hpp"
 
 #include "rosbag2_transport/logging.hpp"
-
-#include "generic_subscription.hpp"
+#include "rosbag2_transport/rosbag2_node.hpp"
+#include "rosbag2_transport/generic_subscription.hpp"
 #include "qos.hpp"
-#include "rosbag2_node.hpp"
 
 #ifdef _WIN32
 // This is necessary because of a bug in yaml-cpp's cmake

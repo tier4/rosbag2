@@ -34,9 +34,9 @@
 #include "rosbag2_storage/storage_filter.hpp"
 
 #include "rosbag2_transport/logging.hpp"
+#include "rosbag2_transport/rosbag2_node.hpp"
 
 #include "qos.hpp"
-#include "rosbag2_node.hpp"
 #include "replayable_message.hpp"
 
 namespace

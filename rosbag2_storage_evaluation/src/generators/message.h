@@ -26,50 +26,51 @@
 namespace ros2bag
 {
 
-using BlobPtr = std::shared_ptr<std::vector<unsigned char> const>;
+  using BlobPtr = std::shared_ptr < std::vector < unsigned char > const >;
 
-class Message
-{
+  class Message
+  {
 public:
-  using Timestamp = std::chrono::system_clock::time_point;
+    using Timestamp = std::chrono::system_clock::time_point;
 
-  Message(Timestamp const & timestamp, std::string const & topic, BlobPtr blob)
-    : timestamp_(timestamp), topic_(topic), blob_(blob)
-  {}
+    Message(Timestamp const & timestamp, std::string const & topic, BlobPtr blob)
+      : timestamp_(timestamp), topic_(topic), blob_(blob)
+    {
+    }
 
-  ~Message() = default;
+    ~Message() = default;
 
-  Timestamp timestamp() const
-  {
-    return timestamp_;
-  }
+    Timestamp timestamp() const
+    {
+      return timestamp_;
+    }
 
-  std::string const topic() const
-  {
-    return topic_;
-  }
+    std::string const topic() const
+    {
+      return topic_;
+    }
 
-  BlobPtr blob() const
-  {
-    return blob_;
-  }
+    BlobPtr blob() const
+    {
+      return blob_;
+    }
 
 
-  friend std::ostream & operator<<(std::ostream & out_stream, Message const & message)
-  {
-    return out_stream << "{timestamp_:" << message.timestamp().time_since_epoch().count()
-                      << ",topic:" << message.topic()
-                      << ",bytes:" << message.blob()->size()
-                      << "}";
-  }
+    friend std::ostream & operator << (std::ostream & out_stream, Message const & message)
+        {
+        return out_stream << "{timestamp_:" << message.timestamp().time_since_epoch().count() <<
+               ",topic:" << message.topic() <<
+               ",bytes:" << message.blob()->size() <<
+               "}";
+      }
 
-private:
-  Timestamp const timestamp_;
-  std::string const topic_;
-  BlobPtr const blob_;
-};
+      private:
+      Timestamp const timestamp_;
+    std::string const topic_;
+    BlobPtr const blob_;
+  };
 
-using MessagePtr = std::shared_ptr<Message const>;
+  using MessagePtr = std::shared_ptr < Message const >;
 
 }
 

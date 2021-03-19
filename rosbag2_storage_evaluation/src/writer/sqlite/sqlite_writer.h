@@ -27,76 +27,78 @@
 
 namespace ros2bag
 {
-using Pragmas = std::map<std::string, std::string>;
-using Indices = std::vector<std::pair<std::string, std::string>>;
+  using Pragmas = std::map < std::string, std::string >;
+  using Indices = std::vector < std::pair < std::string, std::string >>;
 
-class SqliteWriter : public MessageWriter
-{
-public:
-  explicit SqliteWriter(
-    std::string const & filename,
-    unsigned int const messages_per_transaction = 0,
-    Indices const & indices = {},
-    Pragmas const & pragmas = {{"journal_mode", "MEMORY"},
-                               {"synchronous",  "OFF"}}
-  ) : filename_(filename)
-    , messages_per_transaction_(messages_per_transaction)
-    , number_of_message_in_current_transaction_(0)
-    , db_(nullptr)
-    , insert_message_stmt_(nullptr)
-    , open_(false)
-    , in_transaction_(false)
-    , indices_(indices)
-    , pragmas_(pragmas)
-  {}
-
-  ~SqliteWriter() override
+  class SqliteWriter: public MessageWriter
   {
-    SqliteWriter::close();
-  }
+public:
+    explicit SqliteWriter(
+      std::string const & filename,
+      unsigned int const messages_per_transaction = 0,
+      Indices const & indices = {},
+      Pragmas const & pragmas = {{"journal_mode", "MEMORY"},
+        {"synchronous", "OFF"}}
+    )
+    : filename_(filename),
+      messages_per_transaction_(messages_per_transaction),
+      number_of_message_in_current_transaction_(0),
+      db_(nullptr),
+      insert_message_stmt_(nullptr),
+      open_(false),
+      in_transaction_(false),
+      indices_(indices),
+      pragmas_(pragmas)
+    {
+    }
 
-  void open() final;
+    ~SqliteWriter() override
+    {
+      SqliteWriter::close();
+    }
 
-  void close() override;
+    void open() final;
 
-  void write(MessagePtr message) final;
+    void close() override;
 
-  void create_index() final;
+    void write(MessagePtr message) final;
+
+    void create_index() final;
 
 protected:
-  sqlite::DBPtr db() const
-  {
-    return db_;
-  }
+    sqlite::DBPtr db() const
+    {
+      return db_;
+    }
 
-  bool is_open() const
-  {
-    return open_;
-  }
+    bool is_open() const
+    {
+      return open_;
+    }
 
-  virtual void initialize_tables(sqlite::DBPtr db) = 0;
+    virtual void initialize_tables(sqlite::DBPtr db) = 0;
 
-  virtual void write_to_database(MessagePtr message) = 0;
+    virtual void write_to_database(MessagePtr message) = 0;
 
-  virtual void prepare_statements(sqlite::DBPtr db) = 0;
+    virtual void prepare_statements(sqlite::DBPtr db) = 0;
 
 private:
-  std::string const filename_;
-  unsigned int const messages_per_transaction_;
-  unsigned int number_of_message_in_current_transaction_;
-  sqlite::DBPtr db_;
-  sqlite::StatementPtr insert_message_stmt_;
-  bool open_;
-  bool in_transaction_;
-  Pragmas pragmas_;
-  Indices indices_;
+    std::string const filename_;
+    unsigned int const messages_per_transaction_;
+    unsigned int number_of_message_in_current_transaction_;
+    sqlite::DBPtr db_;
+    sqlite::StatementPtr insert_message_stmt_;
+    bool open_;
+    bool in_transaction_;
+    Pragmas pragmas_;
+    Indices indices_;
 
-  void set_pragmas();
+    void set_pragmas();
 
-  void begin_transaction();
+    void begin_transaction();
 
-  void end_transaction();
-};
+    void end_transaction();
+  };
 
 }
 

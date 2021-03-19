@@ -27,8 +27,8 @@
 #include "rcpputils/shared_library.hpp"
 #include "rcutils/types.h"
 
-#include "generic_publisher.hpp"
-#include "generic_subscription.hpp"
+#include "rosbag2_transport/generic_publisher.hpp"
+#include "rosbag2_transport/generic_subscription.hpp"
 
 namespace rosbag2_transport
 {

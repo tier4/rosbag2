@@ -23,38 +23,38 @@
 
 namespace ros2bag
 {
-class SeparateTopicTableSqliteWriter : public SqliteWriter
-{
-public:
-  SeparateTopicTableSqliteWriter(
-    std::string const & filename,
-    unsigned int const messages_per_transaction,
-    Indices const & indices,
-    Pragmas const & pragmas);
-
-  ~SeparateTopicTableSqliteWriter() override
+  class SeparateTopicTableSqliteWriter: public SqliteWriter
   {
-    SeparateTopicTableSqliteWriter::close();
-  }
+public:
+    SeparateTopicTableSqliteWriter(
+      std::string const & filename,
+      unsigned int const messages_per_transaction,
+      Indices const & indices,
+      Pragmas const & pragmas);
 
-  void close() override;
+    ~SeparateTopicTableSqliteWriter() override
+    {
+      SeparateTopicTableSqliteWriter::close();
+    }
 
-  void reset() override;
+    void close() override;
+
+    void reset() override;
 
 private:
-  sqlite::StatementPtr insert_message_stmt_;
-  sqlite::StatementPtr insert_topic_stmt_;
-  std::map<std::string, long> topic_ids_;
+    sqlite::StatementPtr insert_message_stmt_;
+    sqlite::StatementPtr insert_topic_stmt_;
+    std::map < std::string, long > topic_ids_;
 
-  void initialize_tables(sqlite::DBPtr db) final;
+    void initialize_tables(sqlite::DBPtr db) final;
 
-  void write_to_database(MessagePtr message) final;
+    void write_to_database(MessagePtr message) final;
 
-  void prepare_statements(sqlite::DBPtr db) final;
+    void prepare_statements(sqlite::DBPtr db) final;
 
-  void insert_message(Message::Timestamp timestamp, long topic_id, BlobPtr blob);
+    void insert_message(Message::Timestamp timestamp, long topic_id, BlobPtr blob);
 
-  long insert_topic(std::string const & topic);
-};
+    long insert_topic(std::string const & topic);
+  };
 }
 #endif //ROS2_ROSBAG_EVALUATION_SEPARATE_TOPIC_TABLE_SQLITE_WRITER_H

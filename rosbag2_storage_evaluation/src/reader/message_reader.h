@@ -24,19 +24,19 @@
 namespace ros2bag
 {
 
-class MessageReader
-{
+  class MessageReader
+  {
 public:
-  MessageReader() = default;
+    MessageReader() = default;
 
-  virtual ~MessageReader() = default;
+    virtual ~MessageReader() = default;
 
-  virtual void open() = 0;
+    virtual void open() = 0;
 
-  virtual void close() = 0;
+    virtual void close() = 0;
 
-  virtual std::vector<Message> read() = 0;
-};
+    virtual std::vector < Message > read() = 0;
+  };
 
 }
 #endif //ROS2_ROSBAG_EVALUATION_MESSAGE_READER_H

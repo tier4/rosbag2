@@ -21,12 +21,12 @@
 
 using namespace ros2bag;
 
-MessageGenerator::MessageGenerator(unsigned int loop_count, Specification const & msgs) :
-  loop_count_(loop_count)
-  , max_index_(msgs.size())
-  , current_loop_(0)
-  , current_index_(0)
-  , total_msg_count_(loop_count * msgs.size())
+MessageGenerator::MessageGenerator(unsigned int loop_count, Specification const & msgs)
+: loop_count_(loop_count),
+  max_index_(msgs.size()),
+  current_loop_(0),
+  current_index_(0),
+  total_msg_count_(loop_count * msgs.size())
 {
   topics_ = std::vector<std::string>(msgs.size());
   blobs_ = std::vector<BlobPtr>(msgs.size());

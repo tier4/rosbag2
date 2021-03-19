@@ -23,21 +23,21 @@
 namespace ros2bag
 {
 
-class Benchmark
-{
+  class Benchmark
+  {
 public:
-  Benchmark() = default;
+    Benchmark() = default;
 
-  virtual ~Benchmark() = default;
+    virtual ~Benchmark() = default;
 
-  virtual void run() const = 0;
+    virtual void run() const = 0;
 
-  virtual void write_csv(std::ostream & out_stream, bool with_header) const = 0;
+    virtual void write_csv(std::ostream & out_stream, bool with_header) const = 0;
 
-};
+  };
 
-void write_csv_file(
-  std::string const & file_name, Benchmark const & benchmark, bool with_header);
+  void write_csv_file(
+    std::string const & file_name, Benchmark const & benchmark, bool with_header);
 
 }
 

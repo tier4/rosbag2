@@ -22,9 +22,10 @@ using namespace ros2bag;
 int main(int argc, char ** argv)
 {
   if (argc != 5) {
-    std::cerr << "Usage: benchmark <database file name> <number of messages> <message blob size> "
-              << "<messages per transaction>"
-              << std::endl;
+    std::cerr <<
+      "Usage: benchmark <database file name> <number of messages> <message blob size> " <<
+      "<messages per transaction>" <<
+      std::endl;
     return EXIT_FAILURE;
   }
 

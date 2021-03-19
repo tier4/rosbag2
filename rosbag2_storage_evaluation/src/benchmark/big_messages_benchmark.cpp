@@ -33,10 +33,10 @@ void run_benchmark(
 {
 
   std::vector<std::pair<std::string, std::string>> meta_data = {
-    {"description",               description},
-    {"number of messages",        std::to_string(number_of_messages)},
+    {"description", description},
+    {"number of messages", std::to_string(number_of_messages)},
     {"message blob size (bytes)", std::to_string(message_blob_size)},
-    {"transaction size",          std::to_string(transaction_size)}
+    {"transaction size", std::to_string(transaction_size)}
   };
 
   MessageGenerator::Specification specification = {std::make_tuple("topic", message_blob_size)};
@@ -89,34 +89,40 @@ int main(int argc, char ** argv)
 
   auto const write_header = true;
 
-  run_benchmark_repeatedly(5,
+  run_benchmark_repeatedly(
+    5,
     "OneTableSqlite",
     std::make_shared<OneTableSqliteWriter>(
       db_name,
       transaction_size,
-      Indices({{"MESSAGES", "TIMESTAMP"},
-               {"MESSAGES", "TOPIC"}}),
+      Indices(
+        {{"MESSAGES", "TIMESTAMP"},
+          {"MESSAGES", "TOPIC"}}),
       // Setting to "journal_mode" to "OFF" increases writing speed, but turns off transactions.
-      Pragmas({{"journal_mode", "MEMORY"},
-               {"synchronous",  "OFF"}})
+      Pragmas(
+        {{"journal_mode", "MEMORY"},
+          {"synchronous", "OFF"}})
     ),
     db_name,
     msg_count,
     msg_size_bytes,
     transaction_size, write_header);
 
-  run_benchmark_repeatedly(5,
+  run_benchmark_repeatedly(
+    5,
     "SeparateTopicTableSqlite",
     std::make_shared<SeparateTopicTableSqliteWriter>(
       db_name,
       transaction_size,
-      Indices({{"MESSAGES", "TIMESTAMP"},
-               {"MESSAGES", "TOPIC_ID"},
-               {"TOPICS",   "TOPIC"}}),
+      Indices(
+        {{"MESSAGES", "TIMESTAMP"},
+          {"MESSAGES", "TOPIC_ID"},
+          {"TOPICS", "TOPIC"}}),
       // Setting to "journal_mode" to "OFF" increases writing speed, but turns off transactions.
-      Pragmas({{"foreign_keys", "ON"},
-               {"journal_mode", "MEMORY"},
-               {"synchronous",  "OFF"}})
+      Pragmas(
+        {{"foreign_keys", "ON"},
+          {"journal_mode", "MEMORY"},
+          {"synchronous", "OFF"}})
     ),
     db_name,
     msg_count,

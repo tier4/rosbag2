@@ -27,39 +27,41 @@
 namespace ros2bag
 {
 
-class OneTableSqliteWriter : public SqliteWriter
-{
-public:
-  explicit OneTableSqliteWriter(
-    std::string const & filename,
-    unsigned int const messages_per_transaction = 0,
-    Indices const & indices = {{"MESSAGES", "TOPIC"},
-                               {"MESSAGES", "TIMESTAMP"}},
-    Pragmas const & pragmas = {{"journal_mode", "MEMORY"},
-                               {"synchronous",  "OFF"}}
-  ) : SqliteWriter(filename, messages_per_transaction, indices, pragmas)
-  {}
-
-  ~OneTableSqliteWriter() override
+  class OneTableSqliteWriter: public SqliteWriter
   {
-    OneTableSqliteWriter::close();
-  }
+public:
+    explicit OneTableSqliteWriter(
+      std::string const & filename,
+      unsigned int const messages_per_transaction = 0,
+      Indices const & indices = {{"MESSAGES", "TOPIC"},
+        {"MESSAGES", "TIMESTAMP"}},
+      Pragmas const & pragmas = {{"journal_mode", "MEMORY"},
+        {"synchronous", "OFF"}}
+    )
+    : SqliteWriter(filename, messages_per_transaction, indices, pragmas)
+    {
+    }
 
-  void close() override;
+    ~OneTableSqliteWriter() override
+    {
+      OneTableSqliteWriter::close();
+    }
 
-  void reset() override
-  {}
+    void close() override;
+
+    void reset() override
+    {}
 
 protected:
-  void initialize_tables(sqlite::DBPtr db) final;
+    void initialize_tables(sqlite::DBPtr db) final;
 
-  void write_to_database(MessagePtr message) final;
+    void write_to_database(MessagePtr message) final;
 
-  void prepare_statements(sqlite::DBPtr db) final;
+    void prepare_statements(sqlite::DBPtr db) final;
 
 private:
-  sqlite::StatementPtr insert_message_stmt_;
-};
+    sqlite::StatementPtr insert_message_stmt_;
+  };
 
 }
 

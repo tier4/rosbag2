@@ -26,39 +26,40 @@
 namespace ros2bag
 {
 
-class Profiler
-{
+  class Profiler
+  {
 public:
-  Profiler(
-    std::vector<std::pair<std::string, std::string>> const & meta_data,
-    std::string const & file_name)
-    : meta_data_(meta_data), file_name_(file_name)
-  {}
+    Profiler(
+      std::vector < std::pair < std::string, std::string >> const & meta_data,
+      std::string const & file_name)
+      : meta_data_(meta_data), file_name_(file_name)
+    {
+    }
 
-  ~Profiler() = default;
+    ~Profiler() = default;
 
-  void take_time_for(std::string const & task);
+    void take_time_for(std::string const & task);
 
-  void track_disk_usage();
+    void track_disk_usage();
 
-  std::string csv_header() const;
+    std::string csv_header() const;
 
-  std::string csv_entry() const;
+    std::string csv_entry() const;
 
-  using TickProgress = std::function<void()>;
+    using TickProgress = std::function < void() >;
 
-  TickProgress measure_progress(
-    std::string const & subject,
-    unsigned long const total,
-    unsigned long const increment = 1
-  );
+    TickProgress measure_progress(
+      std::string const & subject,
+      unsigned long const total,
+      unsigned long const increment = 1
+    );
 
 private:
-  std::string file_name_;
-  long disk_usage_;
-  std::vector<std::pair<std::string, std::string>> meta_data_;
-  std::vector<std::pair<std::string, std::chrono::system_clock::time_point>> time_points_;
-};
+    std::string file_name_;
+    long disk_usage_;
+    std::vector < std::pair < std::string, std::string >> meta_data_;
+    std::vector < std::pair < std::string, std::chrono::system_clock::time_point >> time_points_;
+  };
 
 }
 

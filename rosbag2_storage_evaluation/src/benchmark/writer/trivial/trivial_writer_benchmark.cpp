@@ -55,8 +55,8 @@ void TrivialWriterBenchmark::write_csv(std::ostream & out_stream, bool with_head
 int main(int argc, char ** argv)
 {
   if (argc != 4) {
-    std::cerr << "Usage: benchmark <text file name> <number of messages> <message blob size>"
-              << std::endl;
+    std::cerr << "Usage: benchmark <text file name> <number of messages> <message blob size>" <<
+      std::endl;
     return EXIT_FAILURE;
   }
 

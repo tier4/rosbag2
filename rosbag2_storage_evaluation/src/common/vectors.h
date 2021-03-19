@@ -21,20 +21,20 @@
 
 namespace ros2bag
 {
-namespace vectors
-{
+  namespace vectors
+  {
 
-template<typename T>
-std::vector<T> repeat(unsigned long times, T element)
-{
-  std::vector<T> result(times);
-  for (auto & e : result) {
-    e = element;
+    template < typename T >
+    std::vector < T > repeat(unsigned long times, T element)
+    {
+      std::vector < T > result(times);
+      for (auto & e : result) {
+        e = element;
+      }
+      return result;
+    }
+
   }
-  return result;
-}
-
-}
 }
 
 #endif //ROS2_ROSBAG_EVALUATION_VECTORS_H

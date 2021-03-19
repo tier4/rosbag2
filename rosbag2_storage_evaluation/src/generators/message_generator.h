@@ -24,36 +24,35 @@
 namespace ros2bag
 {
 
-class MessageGenerator
-{
-public:
-
-  using Specification = std::vector<std::tuple<std::string, unsigned int>>;
-
-  MessageGenerator(unsigned int loop_count, Specification const & msgs);
-
-  bool has_next() const;
-
-  MessagePtr next();
-
-  void reset();
-
-  unsigned long total_msg_count()
+  class MessageGenerator
   {
-    return total_msg_count_;
-  }
+public:
+    using Specification = std::vector < std::tuple < std::string, unsigned int >>;
+
+    MessageGenerator(unsigned int loop_count, Specification const & msgs);
+
+    bool has_next() const;
+
+    MessagePtr next();
+
+    void reset();
+
+    unsigned long total_msg_count()
+    {
+      return total_msg_count_;
+    }
 
 private:
-  unsigned int const loop_count_;
-  unsigned int current_loop_;
-  unsigned long current_index_;
-  unsigned long const max_index_;
-  unsigned long const total_msg_count_;
-  std::vector<std::string> topics_;
-  std::vector<BlobPtr> blobs_;
+    unsigned int const loop_count_;
+    unsigned int current_loop_;
+    unsigned long current_index_;
+    unsigned long const max_index_;
+    unsigned long const total_msg_count_;
+    std::vector < std::string > topics_;
+    std::vector < BlobPtr > blobs_;
 
-  BlobPtr random_blob(unsigned int blob_size) const;
-};
+    BlobPtr random_blob(unsigned int blob_size) const;
+  };
 
 }
 

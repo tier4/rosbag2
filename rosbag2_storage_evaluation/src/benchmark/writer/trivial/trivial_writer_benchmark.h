@@ -27,27 +27,28 @@
 namespace ros2bag
 {
 
-class TrivialWriterBenchmark : public Benchmark
-{
+  class TrivialWriterBenchmark: public Benchmark
+  {
 public:
-  TrivialWriterBenchmark(
-    std::unique_ptr<MessageGenerator> generator,
-    std::unique_ptr<MessageWriter> writer,
-    std::unique_ptr<Profiler> profiler)
-    : generator_(std::move(generator)), writer_(std::move(writer)), profiler_(std::move(profiler))
-  {}
+    TrivialWriterBenchmark(
+      std::unique_ptr < MessageGenerator > generator,
+      std::unique_ptr < MessageWriter > writer,
+      std::unique_ptr < Profiler > profiler)
+      : generator_(std::move(generator)), writer_(std::move(writer)), profiler_(std::move(profiler))
+    {
+    }
 
-  ~TrivialWriterBenchmark() override = default;
+    ~TrivialWriterBenchmark() override = default;
 
-  void run() const override;
+    void run() const override;
 
-  void write_csv(std::ostream & out_stream, bool with_header) const override;
+    void write_csv(std::ostream & out_stream, bool with_header) const override;
 
 private:
-  std::unique_ptr<MessageGenerator> generator_;
-  std::unique_ptr<MessageWriter> writer_;
-  std::unique_ptr<Profiler> profiler_;
-};
+    std::unique_ptr < MessageGenerator > generator_;
+    std::unique_ptr < MessageWriter > writer_;
+    std::unique_ptr < Profiler > profiler_;
+  };
 
 }
 

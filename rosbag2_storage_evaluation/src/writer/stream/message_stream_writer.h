@@ -24,31 +24,33 @@
 namespace ros2bag
 {
 
-class MessageStreamWriter : public MessageWriter
-{
+  class MessageStreamWriter: public MessageWriter
+  {
 public:
-  explicit MessageStreamWriter(std::ostream & output_stream) : output_stream_(output_stream)
-  {}
+    explicit MessageStreamWriter(std::ostream & output_stream)
+    : output_stream_(output_stream)
+    {
+    }
 
-  ~MessageStreamWriter() override = default;
+    ~MessageStreamWriter() override = default;
 
-  void open() override
-  {}
+    void open() override
+    {}
 
-  void close() override
-  {}
+    void close() override
+    {}
 
-  void write(MessagePtr message) override;
+    void write(MessagePtr message) override;
 
-  void create_index() override
-  {}
+    void create_index() override
+    {}
 
-  void reset() override
-  {}
+    void reset() override
+    {}
 
 private:
-  std::ostream & output_stream_;
-};
+    std::ostream & output_stream_;
+  };
 
 }
 

@@ -57,17 +57,17 @@ void ros2bag::sqlite::create_table(
     std::tie(foreign_key_column, parent_table, parent_column) = key;
 
     std::ostringstream constraint;
-    constraint << "FOREIGN KEY (" << foreign_key_column << ") "
-               << "REFERENCES " << parent_table << " (" << parent_column << ")";
+    constraint << "FOREIGN KEY (" << foreign_key_column << ") " <<
+      "REFERENCES " << parent_table << " (" << parent_column << ")";
 
     definitions.push_back(constraint.str());
   }
 
   std::string statement(
-    "CREATE TABLE IF NOT EXISTS "
-      + name
-      + ros2bag::strings::join(definitions, ",", "(", ")")
-      + ";");
+    "CREATE TABLE IF NOT EXISTS " +
+    name +
+    ros2bag::strings::join(definitions, ",", "(", ")") +
+    ";");
   sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr);
 }
 
@@ -79,18 +79,19 @@ void ros2bag::sqlite::create_index(DBPtr db, std::string const & table, std::str
   sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr);
 }
 
-StatementPtr ros2bag::sqlite::new_insert_stmt(DBPtr db, std::string const & table,
+StatementPtr ros2bag::sqlite::new_insert_stmt(
+  DBPtr db, std::string const & table,
   std::vector<std::string> const & fields)
 {
   StatementPtr stmt;
 
   std::string placeholder = "?";
-  std::string sql = "INSERT INTO "
-    + table
-    + ros2bag::strings::join(fields, ",", "(", ")")
-    + " VALUES"
-    + ros2bag::strings::join(ros2bag::vectors::repeat(fields.size(), placeholder), ",", "(", ")")
-    + ";";
+  std::string sql = "INSERT INTO " +
+    table +
+    ros2bag::strings::join(fields, ",", "(", ")") +
+    " VALUES" +
+    ros2bag::strings::join(ros2bag::vectors::repeat(fields.size(), placeholder), ",", "(", ")") +
+    ";";
 
   sqlite3_prepare_v2(db, sql.c_str(), static_cast<int>(sql.size()), &stmt, nullptr);
 

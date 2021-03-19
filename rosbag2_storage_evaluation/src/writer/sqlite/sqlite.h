@@ -23,37 +23,37 @@
 
 namespace ros2bag
 {
-namespace sqlite
-{
+  namespace sqlite
+  {
 
-using DBPtr = sqlite3 *;
-using ForeignKeyDef = std::tuple<std::string, std::string, std::string>;
+    using DBPtr = sqlite3 *;
+    using ForeignKeyDef = std::tuple < std::string, std::string, std::string >;
 
-DBPtr open_db(std::string const & name);
+    DBPtr open_db(std::string const & name);
 
-void close_db(DBPtr db);
+    void close_db(DBPtr db);
 
-void set_pragma(DBPtr db, std::string const & pragma, std::string const & value);
+    void set_pragma(DBPtr db, std::string const & pragma, std::string const & value);
 
-void create_table(
-  DBPtr db,
-  std::string const & name,
-  std::vector<std::string> const & fields,
-  std::vector<ForeignKeyDef> const & foreign_keys = {}
-);
+    void create_table(
+      DBPtr db,
+      std::string const & name,
+      std::vector < std::string > const & fields,
+      std::vector < ForeignKeyDef > const & foreign_keys = {}
+    );
 
-void create_index(DBPtr db, std::string const & table, std::string const & key);
+    void create_index(DBPtr db, std::string const & table, std::string const & key);
 
-using StatementPtr = sqlite3_stmt *;
+    using StatementPtr = sqlite3_stmt *;
 
-StatementPtr new_insert_stmt(
-  DBPtr db, std::string const & table, std::vector<std::string> const & fields);
+    StatementPtr new_insert_stmt(
+      DBPtr db, std::string const & table, std::vector < std::string > const & fields);
 
-void finalize(StatementPtr statement);
+    void finalize(StatementPtr statement);
 
-void exec(DBPtr db, std::string const & statement);
+    void exec(DBPtr db, std::string const & statement);
 
-}
+  }
 }
 
 #endif //ROS2_ROSBAG_EVALUATION_SQLITE_WRITER_H

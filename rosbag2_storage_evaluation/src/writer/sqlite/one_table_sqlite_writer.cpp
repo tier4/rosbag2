@@ -32,11 +32,14 @@ void OneTableSqliteWriter::close()
 
 void OneTableSqliteWriter::write_to_database(MessagePtr message)
 {
-  sqlite3_bind_int64(insert_message_stmt_,
+  sqlite3_bind_int64(
+    insert_message_stmt_,
     1, message->timestamp().time_since_epoch().count());
-  sqlite3_bind_text(insert_message_stmt_,
+  sqlite3_bind_text(
+    insert_message_stmt_,
     2, message->topic().c_str(), static_cast<int>(message->topic().size()), nullptr);
-  sqlite3_bind_blob(insert_message_stmt_,
+  sqlite3_bind_blob(
+    insert_message_stmt_,
     3, message->blob()->data(), static_cast<int>(message->blob()->size()), nullptr);
 
   sqlite3_step(insert_message_stmt_);
@@ -45,7 +48,8 @@ void OneTableSqliteWriter::write_to_database(MessagePtr message)
 
 void OneTableSqliteWriter::initialize_tables(sqlite::DBPtr db)
 {
-  sqlite::create_table(db, "MESSAGES", {
+  sqlite::create_table(
+    db, "MESSAGES", {
     "TIMESTAMP INTEGER NOT NULL",
     "TOPIC TEXT NOT NULL",
     "DATA BLOB NOT NULL"

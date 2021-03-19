@@ -77,14 +77,14 @@ Profiler::TickProgress Profiler::measure_progress(
   unsigned long const total,
   const unsigned long increment)
 {
-  take_time_for(subject + "_0"/*%*/);
+  take_time_for(subject + "_0" /*%*/);
 
   return [this, next_level = 10, current = 0, subject, total, increment]() mutable {
-    current += increment;
-    const auto progress = static_cast<double>(current) / total * 100;
-    if (progress >= next_level) {
-      this->take_time_for(subject + "_" + std::to_string(next_level));
-      next_level += 10 /* % */;
-    }
-  };
+           current += increment;
+           const auto progress = static_cast<double>(current) / total * 100;
+           if (progress >= next_level) {
+             this->take_time_for(subject + "_" + std::to_string(next_level));
+             next_level += 10 /* % */;
+           }
+         };
 }

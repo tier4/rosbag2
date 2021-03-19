@@ -22,13 +22,15 @@
 
 namespace ros2bag
 {
-namespace strings
-{
+  namespace strings
+  {
 
-std::string join(std::vector<std::string> const & strings,
-  std::string const & delimiter, std::string const & prefix = "", std::string const & suffix = "");
+    std::string join(
+      std::vector < std::string > const & strings,
+      std::string const & delimiter, std::string const & prefix = "",
+      std::string const & suffix = "");
 
-}
+  }
 }
 
 #endif //ROS2_ROSBAG_EVALUATION_STRINGS_H
