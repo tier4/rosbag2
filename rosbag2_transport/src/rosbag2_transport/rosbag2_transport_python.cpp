@@ -267,6 +267,7 @@ rosbag2_transport_play(PyObject * Py_UNUSED(self), PyObject * args, PyObject * k
     "loop",
     "topic_remapping",
     "storage_config_file",
+    "clock_publish_frequency",
     nullptr
   };
 
@@ -280,8 +281,9 @@ rosbag2_transport_play(PyObject * Py_UNUSED(self), PyObject * args, PyObject * k
   bool loop = false;
   PyObject * topic_remapping = nullptr;
   char * storage_config_file = nullptr;
+  double clock_publish_frequency;
   if (!PyArg_ParseTupleAndKeywords(
-      args, kwargs, "sss|kfOObOs", const_cast<char **>(kwlist),
+      args, kwargs, "sss|kfOObOsf", const_cast<char **>(kwlist),
       &uri,
       &storage_id,
       &node_prefix,
@@ -291,7 +293,8 @@ rosbag2_transport_play(PyObject * Py_UNUSED(self), PyObject * args, PyObject * k
       &qos_profile_overrides,
       &loop,
       &topic_remapping,
-      &storage_config_file))
+      &storage_config_file,
+      &clock_publish_frequency))
   {
     return nullptr;
   }
@@ -304,6 +307,8 @@ rosbag2_transport_play(PyObject * Py_UNUSED(self), PyObject * args, PyObject * k
   play_options.read_ahead_queue_size = read_ahead_queue_size;
   play_options.rate = rate;
   play_options.loop = loop;
+  play_options.clock_publish_frequency = 40;
+  std::cerr << play_options.clock_publish_frequency << " " << rate<< std::endl;
 
   if (topics) {
     PyObject * topic_iterator = PyObject_GetIter(topics);

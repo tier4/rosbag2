@@ -59,13 +59,13 @@ public:
     reader_ = std::make_unique<rosbag2_cpp::Reader>(std::move(prepared_mock_reader));
 
     sub_->add_subscription<rosgraph_msgs::msg::Clock>(
-      "/clock", expected_clock_messages_, rclcpp::ClockQoS());
+      "/clock", expected_clock_messages_, rclcpp::SensorDataQoS().keep_last(1));
   }
 
   void run_test()
   {
     auto await_received_messages = sub_->spin_subscriptions();
-    rosbag2_transport::Rosbag2Transport rosbag2_transport(reader_, writer_);
+    rosbag2_transport::Rosbag2Transport rosbag2_transport(reader_, writer_, info_);
     rosbag2_transport.play(storage_options_, play_options_);
     await_received_messages.get();
 

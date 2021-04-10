@@ -105,7 +105,7 @@ void Rosbag2Transport::play(
     [&exec]() {
       exec.spin();
     });
-  auto exit = rcpputils::scope_exit(
+  auto exit = rcpputils::make_scope_exit(
     [&exec, &spin_thread]() {
       exec.cancel();
       spin_thread.join();
