@@ -72,7 +72,7 @@ class PlayVerb(VerbExtension):
                  'Note that applicable settings are limited to read-only for ros2 bag play.'
                  'For a list of sqlite3 settings, refer to sqlite3 documentation')
         parser.add_argument(
-            '-c', '--clock', type=check_positive_float, default=0.0,
+            '-c', '--clock', type=float, default=0.0,
             help='Publish to /clock at a specific frequency in Hz, to act as a ROS Time Source. '
                  'Value must be positive. Defaults to not publishing.')
 
