@@ -23,7 +23,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "rcpputils/scope_exit.hpp"
 
 #include "rosbag2_cpp/writer.hpp"
 
