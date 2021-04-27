@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "rcpputils/scope_exit.hpp"
 
 #include "rosbag2_cpp/writer.hpp"
 
@@ -211,7 +212,14 @@ Recorder::create_subscription(
 
 void Recorder::record_messages() const
 {
-  spin(node_);
+  rclcpp::executors::SingleThreadedExecutor exec;
+  exec.add_node(node_);
+  const auto time_step = std::chrono::milliseconds(1);
+  while (rclcpp::ok()) {
+    exec.spin_some();
+    std::this_thread::sleep_for(time_step);
+  }
+//  spin(node_);
 }
 
 std::string Recorder::serialized_offered_qos_profiles_for_topic(const std::string & topic_name)
