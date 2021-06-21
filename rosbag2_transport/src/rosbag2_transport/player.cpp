@@ -94,6 +94,12 @@ bool Player::is_storage_completely_loaded() const
 
 void Player::play(const PlayOptions & options)
 {
+  double delay = options.delay > 0.0 ? options.delay : 0.0;
+  if (delay > 0.0) {
+    ROSBAG2_TRANSPORT_LOG_INFO_STREAM("Sleep " << delay << " sec");
+    std::chrono::duration<double> duration(delay);
+    std::this_thread::sleep_for(duration);
+  }
   if (reader_->has_next()) {
     // Reader does not have "peek", so we must "pop" the first message to see its timestamp
     auto message = reader_->read_next();

@@ -75,6 +75,9 @@ class PlayVerb(VerbExtension):
             '-c', '--clock', type=float, default=0.0,
             help='Publish to /clock at a specific frequency in Hz, to act as a ROS Time Source. '
                  'Value must be positive. Defaults to not publishing.')
+        parser.add_argument(
+            '-d', '--delay', type=float, default=0.0,
+            help='Sleep SEC seconds after play. Valid range > 0.0')
 
     def main(self, *, args):  # noqa: D102
         qos_profile_overrides = {}  # Specify a valid default
@@ -107,4 +110,5 @@ class PlayVerb(VerbExtension):
             loop=args.loop,
             topic_remapping=args.remap,
             storage_config_file=storage_config_file,
-            clock_publish_frequency = args.clock)
+            clock_publish_frequency = args.clock,
+            delay=args.delay)
