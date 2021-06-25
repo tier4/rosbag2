@@ -111,7 +111,7 @@ void Rosbag2Transport::play(
       spin_thread.join();
     });
   try {
-    Player player(reader_, transport_node);
+    Player player(reader_, transport_node, storage_options); // [EVT4-818] add "storage_options".
     do {
       reader_->open(storage_options, {"", rmw_get_serialization_format()});
       player.play(play_options);

@@ -77,10 +77,29 @@ namespace rosbag2_transport
 const std::chrono::milliseconds
 Player::queue_read_wait_period_ = std::chrono::milliseconds(100);
 
+// [EVT4-818] start.
+static const uint32_t kTimestampMask = 0xFFFFFFF0;
+static const size_t kIndex_HeaderStampNext = 6;
+static const size_t kOffset_HeaderStamp = 4;
+static int loopIndex = 0;
+static int bagDuration = 0;
+// [EVT4-818] end.
+
 Player::Player(
   std::shared_ptr<rosbag2_cpp::Reader> reader, std::shared_ptr<Rosbag2Node> rosbag2_transport)
 : reader_(std::move(reader)), rosbag2_transport_(rosbag2_transport)
 {}
+
+// [EVT4-818] start.
+// add StorageOptions argument, to open reader_ and get metadata.
+Player::Player(
+  std::shared_ptr<rosbag2_cpp::Reader> reader, std::shared_ptr<Rosbag2Node> rosbag2_transport, const rosbag2_storage::StorageOptions & storage_options)
+: reader_(std::move(reader)), rosbag2_transport_(rosbag2_transport),storage_options_(storage_options)
+{
+  reader_->open(storage_options_, {"", rmw_get_serialization_format()});
+  bagDuration = std::chrono::duration_cast<std::chrono::seconds>(reader_->get_metadata().duration).count() + 1;
+}
+// [EVT4-818] end.
 
 bool Player::is_storage_completely_loaded() const
 {
@@ -94,6 +113,8 @@ bool Player::is_storage_completely_loaded() const
 
 void Player::play(const PlayOptions & options)
 {
+  loopIndex++;	    // [EVT4-818].
+
   if (reader_->has_next()) {
     // Reader does not have "peek", so we must "pop" the first message to see its timestamp
     auto message = reader_->read_next();
@@ -176,6 +197,23 @@ void Player::play_messages_until_queue_empty()
     if (rclcpp::ok()) {
       auto publisher_iter = publishers_.find(message->topic_name);
       if (publisher_iter != publishers_.end()) {
+
+        // [EVT4-818] start.
+        // workaround for the problem that the timestamp returns to the start time when entering the 2nd round.
+        // after 2nd round, raise the timestamp in header data and in packet data.
+
+        // raise the timestamp in packet data.
+        for(size_t i = kIndex_HeaderStampNext; i < message->serialized_data->buffer_length; i++) {
+          if( (*(reinterpret_cast<uint32_t *>(&(message->serialized_data->buffer[i]))) & kTimestampMask) ==
+              (*(reinterpret_cast<uint32_t *>(&(message->serialized_data->buffer[kOffset_HeaderStamp]))) & kTimestampMask) ) {
+            *(reinterpret_cast<uint32_t *>(&(message->serialized_data->buffer[i]))) += ((loopIndex - 1) * bagDuration);
+          }
+        }
+
+        // raise the timestamp in header data.
+        *(reinterpret_cast<uint32_t *>(&(message->serialized_data->buffer[kOffset_HeaderStamp]))) += ((loopIndex - 1) * bagDuration);
+        // [EVT4-818] end.
+
         publisher_iter->second->publish(message->serialized_data);
       }
     }

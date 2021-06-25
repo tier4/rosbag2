@@ -30,6 +30,7 @@
 
 #include "rosbag2_cpp/clocks/player_clock.hpp"
 #include "rosbag2_storage/serialized_bag_message.hpp"
+#include "rosbag2_storage/storage_options.hpp"	  // [EVT4-818].
 #include "rosbag2_transport/play_options.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
 
@@ -50,6 +51,13 @@ public:
   explicit Player(
     std::shared_ptr<rosbag2_cpp::Reader> reader,
     std::shared_ptr<Rosbag2Node> rosbag2_transport);
+
+  // [EVT4-818] start.
+  explicit Player(
+    std::shared_ptr<rosbag2_cpp::Reader> reader,
+    std::shared_ptr<Rosbag2Node> rosbag2_transport,
+    const rosbag2_storage::StorageOptions & storage_options);
+  // [EVT4-818] end.
 
   void play(const PlayOptions & options);
 
@@ -74,6 +82,7 @@ private:
   std::unique_ptr<rosbag2_cpp::PlayerClock> clock_;
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_publisher_;
   std::shared_ptr<rclcpp::TimerBase> clock_publish_timer_;
+  rosbag2_storage::StorageOptions storage_options_;		// [EVT4-818].
 };
 
 }  // namespace rosbag2_transport
