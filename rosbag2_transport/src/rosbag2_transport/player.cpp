@@ -79,7 +79,7 @@ Player::queue_read_wait_period_ = std::chrono::milliseconds(100);
 
 // [EVT4-818] start.
 static const uint32_t kTimestampMask = 0xFFFFFFF0;
-static const size_t kIndex_HeaderStampNext = 6;
+static const size_t kIndex_HeaderStampNext = 9;
 static const size_t kOffset_HeaderStamp = 4;
 static int loopIndex = 0;
 static int bagDuration = 0;
