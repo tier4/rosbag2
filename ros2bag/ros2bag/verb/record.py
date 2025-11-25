@@ -53,6 +53,9 @@ class RecordVerb(VerbExtension):
         parser.add_argument(
             'topics', nargs='*', default=None, help='List of topics to record.')
         parser.add_argument(
+            '--latched-topics', type=str, default=[], nargs='*',
+            help='latched topics to record in every bagfile, separated by space.')
+        parser.add_argument(
             '-a', '--all', action='store_true',
             help='Record all topics. Required if no explicit topic list or regex filters.')
         parser.add_argument(
@@ -63,6 +66,9 @@ class RecordVerb(VerbExtension):
             '-x', '--exclude', default='',
             help='Exclude topics containing provided regular expression. '
             'Works on top of --all, --regex, or topics list.')
+        parser.add_argument(
+            '--latched-regex', type=str, default='',
+            help='regex of latched topics to record in every bagfile, separated by space.')
         parser.add_argument(
             '--include-unpublished-topics', action='store_true',
             help='Discover and record topics which have no publisher. '
@@ -181,6 +187,10 @@ class RecordVerb(VerbExtension):
         if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex)):
             return print_error('Invalid choice: Must specify topic(s), --regex or --all')
 
+        if (args.latched_regex and not args.latched_topics):
+            return print_error('Specify either --latched-topics or --latched-regex, '
+                               'but not both simultaneously.')
+
         if args.all and args.regex:
             print('[WARN] [ros2bag]: --all will override --regex.')
 
@@ -242,11 +252,13 @@ class RecordVerb(VerbExtension):
         record_options.all = args.all
         record_options.is_discovery_disabled = args.no_discovery
         record_options.topics = args.topics
+        record_options.latched_topics = args.latched_topics
         record_options.rmw_serialization_format = args.serialization_format
         record_options.topic_polling_interval = datetime.timedelta(
             milliseconds=args.polling_interval)
         record_options.regex = args.regex
         record_options.exclude = args.exclude
+        record_options.latched_regex = args.latched_regex
         record_options.node_prefix = NODE_NAME_PREFIX
         record_options.compression_mode = args.compression_mode
         record_options.compression_format = args.compression_format

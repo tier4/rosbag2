@@ -58,7 +58,7 @@ TEST_F(RecordIntegrationTestFixture, regex_topics_recording)
   ASSERT_FALSE(std::regex_match(b3, re));
   ASSERT_FALSE(std::regex_match(b4, re));
 
-  rosbag2_transport::RecordOptions record_options = {false, false, {}, "rmw_format", 10ms};
+  rosbag2_transport::RecordOptions record_options = {false, false, {}, {}, "rmw_format", 10ms};
   record_options.regex = regex;
 
   // TODO(karsten1987) Refactor this into publication manager
@@ -129,9 +129,10 @@ TEST_F(RecordIntegrationTestFixture, regex_and_exclude_recording)
   ASSERT_TRUE(std::regex_match(e1, re));
   ASSERT_TRUE(std::regex_match(e1, exclude));
 
-  rosbag2_transport::RecordOptions record_options = {false, false, {}, "rmw_format", 10ms};
+  rosbag2_transport::RecordOptions record_options = {false, false, {}, {}, "rmw_format", 10ms};
   record_options.regex = regex;
   record_options.exclude = regex_exclude;
+  record_options.latched_regex = "latched_\\w+";
 
 
   // TODO(karsten1987) Refactor this into publication manager

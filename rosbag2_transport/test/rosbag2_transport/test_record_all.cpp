@@ -47,7 +47,7 @@ TEST_F(RecordIntegrationTestFixture, published_messages_from_multiple_topics_are
   pub_manager.setup_publisher(array_topic, array_message, 2);
   pub_manager.setup_publisher(string_topic, string_message, 2);
 
-  rosbag2_transport::RecordOptions record_options = {true, false, {}, "rmw_format", 100ms};
+  rosbag2_transport::RecordOptions record_options = {true, false, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();

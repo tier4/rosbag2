@@ -121,6 +121,13 @@ public:
    */
   void add_event_callbacks(const bag_events::WriterEventCallbacks & callbacks) override;
 
+  /**
+   * \brief Set the latched topics to record in every file.
+   * \param latched_topics the list of latched topics to record.
+   */
+  void set_latched_topics(
+    const std::vector<std::string> & latched_topics, const std::string & latched_regex) override;
+
 protected:
   std::string base_folder_;
   std::unique_ptr<rosbag2_storage::StorageFactoryInterface> storage_factory_;
@@ -132,6 +139,12 @@ protected:
   bool use_cache_ {false};
   std::shared_ptr<rosbag2_cpp::cache::MessageCacheInterface> message_cache_;
   std::unique_ptr<rosbag2_cpp::cache::CacheConsumer> cache_consumer_;
+
+  std::vector<std::string> latched_topics_;
+  std::string latched_regex_;
+  std::mutex latched_topics_messages_mutex_;
+  std::unordered_map<
+    std::string, std::shared_ptr<rosbag2_storage::SerializedBagMessage>> latched_topics_messages_;
 
   std::string split_bagfile_local(bool execute_callbacks = true);
 
@@ -174,11 +187,26 @@ protected:
   get_writeable_message(
     std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
 
+  // Write latched topics messages to the bag file
+  void write_latched_topic_messages(
+    const rcutils_time_point_value_t & time_stamp);
+
+  // Get latched topics messages
+  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> get_latched_topic_messages();
+
+  // Write topic message to the bag file
+  void write_topic_message(
+    const std::shared_ptr<rosbag2_storage::SerializedBagMessage> & message);
+
+  // Check if the topic is latched topic and should be written to every bag file
+  bool is_latched_topic(const std::string & topic_name) const;
+
 private:
   /// Helper method to write messages while also updating tracked metadata.
   void write_messages(
     const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages);
   bool is_first_message_ {true};
+  bool is_splitted_bagfile_ {false};
 
   bag_events::EventCallbackManager callback_manager_;
 };
