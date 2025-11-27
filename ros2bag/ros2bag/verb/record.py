@@ -187,7 +187,7 @@ class RecordVerb(VerbExtension):
         if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex)):
             return print_error('Invalid choice: Must specify topic(s), --regex or --all')
 
-        if (args.latched_regex and not args.latched_topics):
+        if (not args.latched_regex and not args.latched_topics):
             return print_error('Specify either --latched-topics or --latched-regex, '
                                'but not both simultaneously.')
 
