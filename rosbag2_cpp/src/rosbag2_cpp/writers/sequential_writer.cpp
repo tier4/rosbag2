@@ -411,7 +411,7 @@ void SequentialWriter::write(std::shared_ptr<rosbag2_storage::SerializedBagMessa
     RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
       "not add latched topics because not is_splitted_bagfile_(" << is_splitted_bagfile_ <<
-      ") or snapshot_mode(" << storage_options_.snapshot_mode << ")");
+        ") or snapshot_mode(" << storage_options_.snapshot_mode << ")");
   }
 
   if (!is_wrote_message) {
