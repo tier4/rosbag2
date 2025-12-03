@@ -16,6 +16,8 @@
 #define ROSBAG2_CPP__WRITER_INTERFACES__BASE_WRITER_INTERFACE_HPP_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "rosbag2_cpp/bag_events.hpp"
 #include "rosbag2_cpp/converter_options.hpp"
@@ -64,6 +66,14 @@ public:
   virtual void split_bagfile() = 0;
 
   virtual void add_event_callbacks(const bag_events::WriterEventCallbacks & callbacks) = 0;
+
+  /**
+   * Set the latched topics and regex for the writer.
+   * \param latched_topics The list of latched topics to record.
+   * \param latched_regex The regex of latched topics to record.
+   */
+  virtual void set_latched_topics(
+    const std::vector<std::string> & latched_topics, const std::string & latched_regex) = 0;
 };
 
 }  // namespace writer_interfaces

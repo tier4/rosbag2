@@ -194,6 +194,10 @@ RecorderImpl::RecorderImpl(
       node->get_namespace(), false);
   }
 
+  for (auto & topic : record_options_.latched_topics) {
+    topic = rclcpp::expand_topic_or_service_name(topic, get_name(), get_namespace(), false);
+  }
+
   for (auto & exclude_topic : record_options_.exclude_topics) {
     exclude_topic = rclcpp::expand_topic_or_service_name(
       exclude_topic, node->get_name(),
@@ -330,6 +334,10 @@ void RecorderImpl::record()
       event_notifier_->on_bag_split_in_recorder(info);
     };
   writer_->add_event_callbacks(callbacks);
+
+  if (!record_options_.latched_topics.empty() || !record_options_.latched_regex.empty()) {
+    writer_->set_latched_topics(record_options_.latched_topics, record_options_.latched_regex);
+  }
 
   serialization_format_ = record_options_.rmw_serialization_format;
   RCLCPP_INFO(node->get_logger(), "Listening for topics...");

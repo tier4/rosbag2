@@ -94,6 +94,7 @@ class RecordOptions:
     is_discovery_disabled: bool
     node_prefix: str
     regex: str
+    latched_regex: str
     rmw_serialization_format: str
     services: List[str]
     start_paused: bool
@@ -101,6 +102,7 @@ class RecordOptions:
     topic_qos_profile_overrides: dict
     topic_types: List[str]
     topics: List[str]
+    latched_topics: List[str]
     use_sim_time: bool
     def __init__(self) -> None: ...
 

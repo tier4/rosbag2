@@ -71,6 +71,9 @@ def add_recorder_arguments(parser: ArgumentParser) -> None:
         '--topics', type=str, default=[], metavar='Topic', nargs='+',
         help='Space-delimited list of topics to record.')
     parser.add_argument(
+        '--latched-topics', type=str, default=[], nargs='*',
+        help='latched topics to record in every bagfile, separated by space.')
+    parser.add_argument(
         '--services', type=str, metavar='ServiceName', nargs='+',
         help='Space-delimited list of services to record.')
     parser.add_argument(
@@ -89,6 +92,9 @@ def add_recorder_arguments(parser: ArgumentParser) -> None:
         '-e', '--regex', default='',
         help='Record only topics and services containing provided regular expression. '
              'Note:  --all, --all-topics or --all-services will override --regex.')
+    parser.add_argument(
+        '--latched-regex', type=str, default='',
+        help='regex of latched topics to record in every bagfile, separated by space.')
     parser.add_argument(
         '--exclude-regex', default='',
         help='Exclude topics and services containing provided regular expression. '
@@ -240,6 +246,10 @@ def validate_parsed_arguments(args, uri) -> str:
         return print_error('Need to specify at least one option out of --all, --all-topics, '
                            '--all-services, --services, --topics, --topic-types or --regex')
 
+    if (args.latched_regex and not args.latched_topics):
+        return print_error('Specify either --latched-topics or --latched-regex, '
+                            'but not both simultaneously.')
+
     if args.exclude_regex and not \
             (args.all or args.all_topics or args.topic_types or args.all_services or
              args.regex):
@@ -348,6 +358,8 @@ class RecordVerb(VerbExtension):
         # Convert service name to service event topic name
         record_options.services = convert_service_to_service_event_topic(args.services)
         record_options.exclude_topic_types = args.exclude_topic_types
+        record_options.latched_topics = args.latched_topics
+        record_options.latched_regex = args.latched_regex
         record_options.rmw_serialization_format = args.serialization_format
         record_options.topic_polling_interval = datetime.timedelta(
             milliseconds=args.polling_interval)

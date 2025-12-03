@@ -32,11 +32,13 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["is_discovery_disabled"] = record_options.is_discovery_disabled;
   node["topics"] = record_options.topics;
   node["topic_types"] = record_options.topic_types;
+  node["latched_topics"] = record_options.latched_topics;
   node["exclude_topic_types"] = record_options.exclude_topic_types;
   node["services"] = record_options.services;
   node["rmw_serialization_format"] = record_options.rmw_serialization_format;
   node["topic_polling_interval"] = record_options.topic_polling_interval;
   node["regex"] = record_options.regex;
+  node["latched_regex"] = record_options.latched_regex;
   node["exclude_regex"] = record_options.exclude_regex;
   node["exclude_topics"] = record_options.exclude_topics;
   node["exclude_services"] = record_options.exclude_service_events;
@@ -70,6 +72,7 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   optional_assign<bool>(node, "is_discovery_disabled", record_options.is_discovery_disabled);
   optional_assign<std::vector<std::string>>(node, "topics", record_options.topics);
   optional_assign<std::vector<std::string>>(node, "topic_types", record_options.topic_types);
+  optional_assign<std::vector<std::string>>(node, "latched_topics", record_options.latched_topics);
   optional_assign<std::vector<std::string>>(node, "services", record_options.services);
   optional_assign<std::string>(
     node, "rmw_serialization_format", record_options.rmw_serialization_format);
@@ -78,6 +81,7 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
     node, "topic_polling_interval", record_options.topic_polling_interval);
 
   optional_assign<std::string>(node, "regex", record_options.regex);
+  optional_assign<std::string>(node, "latched_regex", record_options.latched_regex);
   // Map exclude to the "exclude_regex" for backward compatability.
   optional_assign<std::string>(node, "exclude", record_options.exclude_regex);
   optional_assign<std::string>(node, "exclude_regex", record_options.exclude_regex);
