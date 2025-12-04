@@ -196,7 +196,7 @@ protected:
 
   // Write topic message to the bag file
   void write_topic_message(
-    const std::shared_ptr<rosbag2_storage::SerializedBagMessage> & message);
+    std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
 
   // Check if the topic is latched topic and should be written to every bag file
   bool is_latched_topic(const std::string & topic_name) const;

@@ -39,6 +39,8 @@ namespace rosbag2_cpp
 namespace writers
 {
 
+#define USE_MODIFIED_LATCHED_MESSAGE 1
+
 static constexpr char const * kDefaultStorageID = "sqlite3";
 
 namespace
@@ -437,13 +439,21 @@ void SequentialWriter::write_latched_topic_messages(const rcutils_time_point_val
 {
   std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, latched_message] : latched_topics_messages_) {
+    #ifdef USE_MODIFIED_LATCHED_MESSAGE
+    rosbag2_storage::SerializedBagMessage modified_latched_message{*latched_message};
+    modified_latched_message.time_stamp = time_stamp;
+    auto msg_ptr =
+      std::make_shared<rosbag2_storage::SerializedBagMessage>(modified_latched_message);
+    write_topic_message(msg_ptr);
+    #else
     latched_message->time_stamp = time_stamp;
     write_topic_message(latched_message);
+    #endif
   }
 }
 
 void SequentialWriter::write_topic_message(
-  const std::shared_ptr<rosbag2_storage::SerializedBagMessage> & message)
+  std::shared_ptr<rosbag2_storage::SerializedBagMessage> message)
 {
   // Get TopicInformation handler for counting messages.
   rosbag2_storage::TopicInformation * topic_information {nullptr};
@@ -554,9 +564,15 @@ void SequentialWriter::write_messages(
       // replace latched_topic timestamp with the first message timestamp
       const auto first_msg_timestamp = messages.front()->time_stamp;
       for (auto & msg : latched_messages) {
+        #ifdef USE_MODIFIED_LATCHED_MESSAGE
+        rosbag2_storage::SerializedBagMessage modified_msg{*msg};
+        modified_msg.time_stamp = first_msg_timestamp;
+        auto msg_ptr = std::make_shared<const rosbag2_storage::SerializedBagMessage>(modified_msg);
+        write_messages.emplace_back(msg_ptr);
+        #else
         msg->time_stamp = first_msg_timestamp;
-        write_messages.emplace_back(
-          std::make_shared<const rosbag2_storage::SerializedBagMessage>(*msg));
+        write_messages.emplace_back(msg);
+        #endif
       }
     }
   }
