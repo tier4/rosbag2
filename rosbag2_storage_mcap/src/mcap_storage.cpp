@@ -25,9 +25,9 @@
 #else
   // COMPATIBILITY(foxy, galactic) - this block is available in rosbag2_storage/yaml.hpp in H
   #ifdef _WIN32
-    // This is necessary because of a bug in yaml-cpp's cmake
+  // This is necessary because of a bug in yaml-cpp's cmake
     #define YAML_CPP_DLL
-    // This is necessary because yaml-cpp does not always use dllimport/dllexport consistently
+  // This is necessary because yaml-cpp does not always use dllimport/dllexport consistently
     #pragma warning(push)
     #pragma warning(disable : 4251)
     #pragma warning(disable : 4275)
