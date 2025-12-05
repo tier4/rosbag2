@@ -457,7 +457,7 @@ void SequentialWriter::write(std::shared_ptr<const rosbag2_storage::SerializedBa
       is_splitted_bagfile_ = false;
       if (!latched_topics_messages_.empty()) {
         // write latched topic messages
-        write_latched_topic_messages(message->time_stamp);
+        write_latched_topic_messages(message->recv_timestamp);
         if (is_latched_topic(message->topic_name)) {
           is_wrote_message = true;
         }
@@ -472,10 +472,10 @@ void SequentialWriter::write(std::shared_ptr<const rosbag2_storage::SerializedBa
   }
 }
 
-std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>>
+std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>>
 SequentialWriter::get_latched_topic_messages()
 {
-  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> messages;
+  std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> messages;
   std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, message] : latched_topics_messages_) {
     messages.push_back(message);
@@ -487,18 +487,20 @@ void SequentialWriter::write_latched_topic_messages(const rcutils_time_point_val
 {
   std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, latched_message] : latched_topics_messages_) {
-    latched_message->time_stamp = time_stamp;
-    write_topic_message(latched_message);
+    rosbag2_storage::SerializedBagMessage mod_latched_message{*latched_message};
+    mod_latched_message.recv_timestamp = time_stamp;
+    auto message = std::make_shared<const rosbag2_storage::SerializedBagMessage>(mod_latched_message);
+    write_topic_message(message);
   }
 }
 
 void SequentialWriter::write_topic_message(
-  const std::shared_ptr<rosbag2_storage::SerializedBagMessage> & message)
+  std::shared_ptr<const rosbag2_storage::SerializedBagMessage> & message)
 {
   // Get TopicInformation handler for counting messages.
-  rosbag2_storage::TopicInformation * topic_information {nullptr};
+  rosbag2_storage::TopicInformation * topic_information_ptr {nullptr};
   try {
-    topic_information = &topics_names_to_info_.at(message->topic_name);
+    topic_information_ptr = &topics_names_to_info_.at(message->topic_name);
   } catch (const std::out_of_range & /* oor */) {
     std::stringstream errmsg;
     errmsg << "Failed to write on topic '" << message->topic_name <<
@@ -623,9 +625,10 @@ void SequentialWriter::write_messages(
       // replace latched_topic timestamp with the first message timestamp
       const auto first_msg_timestamp = messages.front()->recv_timestamp;
       for (auto & msg : latched_messages) {
-        msg->time_stamp = first_msg_timestamp;
-        write_messages.emplace_back(
-          std::make_shared<const rosbag2_storage::SerializedBagMessage>(*msg));
+        rosbag2_storage::SerializedBagMessage mod_msg{*msg};
+        mod_msg.recv_timestamp = first_msg_timestamp;
+        auto mod_msg_ptr = std::make_shared<const rosbag2_storage::SerializedBagMessage>(mod_msg);
+        write_messages.emplace_back(mod_msg_ptr);
         RCLCPP_ERROR_STREAM(
           rclcpp::get_logger("rosbag2_cpp"),
           "add write_messages size: " << write_messages.size());

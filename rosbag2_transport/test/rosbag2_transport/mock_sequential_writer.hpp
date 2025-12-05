@@ -103,6 +103,24 @@ public:
     }
   }
 
+  void set_latched_topics(
+    const std::vector<std::string> & topics,
+    const std::string & regex) override
+  {
+    latched_topics_ = topics;
+    latched_regex_ = regex;
+  }
+
+  const std::vector<std::string> & get_latched_topics()
+  {
+    return latched_topics_;
+  }
+
+  const std::string & get_latched_regex()
+  {
+    return latched_regex_;
+  }
+
   size_t get_number_of_recorded_messages() const
   {
     std::lock_guard<std::mutex> lock(messages_mutex_);
@@ -183,6 +201,8 @@ private:
   size_t file_number_ = 0;
   size_t max_messages_per_file_ = 0;
   bool writer_close_called_{false};
+  std::vector<std::string> latched_topics_;
+  std::string latched_regex_;
 };
 
 #endif  // ROSBAG2_TRANSPORT__MOCK_SEQUENTIAL_WRITER_HPP_

@@ -261,7 +261,6 @@ public:
     const std::vector<std::string> & latched_topics, const std::string & latched_regex);
 
 
-
 private:
   std::mutex writer_mutex_;
   std::unique_ptr<rosbag2_cpp::writer_interfaces::BaseWriterInterface> writer_impl_;

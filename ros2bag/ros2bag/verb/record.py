@@ -246,7 +246,7 @@ def validate_parsed_arguments(args, uri) -> str:
         return print_error('Need to specify at least one option out of --all, --all-topics, '
                            '--all-services, --services, --topics, --topic-types or --regex')
 
-    if (args.latched_regex and not args.latched_topics):
+    if args.latched_regex and (args.latched_topics and len(args.latched_topics) > 0):
         return print_error('Specify either --latched-topics or --latched-regex, '
                             'but not both simultaneously.')
 

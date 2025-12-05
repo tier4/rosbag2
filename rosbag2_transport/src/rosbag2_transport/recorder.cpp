@@ -195,7 +195,7 @@ RecorderImpl::RecorderImpl(
   }
 
   for (auto & topic : record_options_.latched_topics) {
-    topic = rclcpp::expand_topic_or_service_name(topic, get_name(), get_namespace(), false);
+    topic = rclcpp::expand_topic_or_service_name(topic, node->get_name(), node->get_namespace(), false);
   }
 
   for (auto & exclude_topic : record_options_.exclude_topics) {
