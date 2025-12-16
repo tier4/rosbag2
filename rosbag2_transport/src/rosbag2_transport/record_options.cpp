@@ -45,12 +45,14 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["all"] = record_options.all;
   node["is_discovery_disabled"] = record_options.is_discovery_disabled;
   node["topics"] = record_options.topics;
-  node["latched_topics"] = record_options.latched_topics;
   node["rmw_serialization_format"] = record_options.rmw_serialization_format;
   node["topic_polling_interval"] = record_options.topic_polling_interval;
   node["regex"] = record_options.regex;
   node["exclude"] = record_options.exclude;
+  node["latched_all_transient_local"] = record_options.latched_all_transient_local;
+  node["latched_topics"] = record_options.latched_topics;
   node["latched_regex"] = record_options.latched_regex;
+  node["latched_exclude"] = record_options.latched_exclude;
   node["node_prefix"] = record_options.node_prefix;
   node["compression_mode"] = record_options.compression_mode;
   node["compression_format"] = record_options.compression_format;
@@ -62,6 +64,9 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["topic_qos_profile_overrides"] = qos_overrides;
   node["include_hidden_topics"] = record_options.include_hidden_topics;
   node["include_unpublished_topics"] = record_options.include_unpublished_topics;
+  node["start_paused"] = record_options.start_paused;
+  node["ignore_leaf_topics"] = record_options.ignore_leaf_topics;
+  node["use_sim_time"] = record_options.use_sim_time;
   return node;
 }
 
@@ -71,14 +76,17 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   optional_assign<bool>(node, "all", record_options.all);
   optional_assign<bool>(node, "is_discovery_disabled", record_options.is_discovery_disabled);
   optional_assign<std::vector<std::string>>(node, "topics", record_options.topics);
-  optional_assign<std::vector<std::string>>(node, "latched_topics", record_options.latched_topics);
   optional_assign<std::string>(
     node, "rmw_serialization_format", record_options.rmw_serialization_format);
   optional_assign<std::chrono::milliseconds>(
     node, "topic_polling_interval", record_options.topic_polling_interval);
   optional_assign<std::string>(node, "regex", record_options.regex);
   optional_assign<std::string>(node, "exclude", record_options.exclude);
+  optional_assign<bool>(
+    node, "latched_all_transient_local", record_options.latched_all_transient_local);
+  optional_assign<std::vector<std::string>>(node, "latched_topics", record_options.latched_topics);
   optional_assign<std::string>(node, "latched_regex", record_options.latched_regex);
+  optional_assign<std::string>(node, "latched_exclude", record_options.latched_exclude);
   optional_assign<std::string>(node, "node_prefix", record_options.node_prefix);
   optional_assign<std::string>(node, "compression_mode", record_options.compression_mode);
   optional_assign<std::string>(node, "compression_format", record_options.compression_format);

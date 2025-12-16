@@ -92,12 +92,9 @@ public:
     }
   }
 
-  void set_latched_topics(
-    const std::vector<std::string> & topics,
-    const std::string & regex) override
+  void set_latched_topics(const std::vector<std::string> & topics) override
   {
     latched_topics_ = topics;
-    latched_regex_ = regex;
   }
 
   const std::vector<std::string> & get_latched_topics()

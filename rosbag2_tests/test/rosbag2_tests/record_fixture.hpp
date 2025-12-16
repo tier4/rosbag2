@@ -161,9 +161,10 @@ public:
   }
 
   template<typename MessageT>
-  std::vector<std::shared_ptr<MessageT>> get_messages_for_topic(const std::string & topic)
+  std::vector<std::shared_ptr<MessageT>> get_messages_for_topic(
+    const std::string & topic, int split_index = 0)
   {
-    auto all_messages = get_messages();
+    auto all_messages = get_messages(split_index);
     auto topic_messages = std::vector<std::shared_ptr<MessageT>>();
     for (const auto & msg : all_messages) {
       if (msg->topic_name == topic) {
@@ -174,11 +175,12 @@ public:
     return topic_messages;
   }
 
-  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> get_messages()
+  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> get_messages(
+    int split_index = 0)
   {
     std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> table_msgs;
     auto storage = std::make_shared<rosbag2_storage_plugins::SqliteStorage>();
-    const auto database_path = get_bag_file_path(0).string();
+    const auto database_path = get_bag_file_path(split_index).string();
     storage->open(
       {database_path, "sqlite3"},
       rosbag2_storage::storage_interfaces::IOFlag::READ_ONLY);

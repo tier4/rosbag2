@@ -125,8 +125,7 @@ public:
    * \brief Set the latched topics to record in every file.
    * \param latched_topics the list of latched topics to record.
    */
-  void set_latched_topics(
-    const std::vector<std::string> & latched_topics, const std::string & latched_regex) override;
+  void set_latched_topics(const std::vector<std::string> & latched_topics) override;
 
 protected:
   std::string base_folder_;
@@ -140,8 +139,8 @@ protected:
   std::shared_ptr<rosbag2_cpp::cache::MessageCacheInterface> message_cache_;
   std::unique_ptr<rosbag2_cpp::cache::CacheConsumer> cache_consumer_;
 
+  std::mutex latched_topics_mutex_;
   std::vector<std::string> latched_topics_;
-  std::string latched_regex_;
   std::mutex latched_topics_messages_mutex_;
   std::unordered_map<
     std::string, std::shared_ptr<rosbag2_storage::SerializedBagMessage>> latched_topics_messages_;
@@ -188,8 +187,8 @@ protected:
     std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
 
   // Write latched topics messages to the bag file
-  void write_latched_topic_messages(
-    const rcutils_time_point_value_t & time_stamp);
+  bool write_latched_topic_messages(
+    const rcutils_time_point_value_t & time_stamp, const std::string & current_topic_name);
 
   // Get latched topics messages
   std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> get_latched_topic_messages();
@@ -199,7 +198,7 @@ protected:
     std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
 
   // Check if the topic is latched topic and should be written to every bag file
-  bool is_latched_topic(const std::string & topic_name) const;
+  bool is_latched_topic(const std::string & topic_name);
 
 private:
   /// Helper method to write messages while also updating tracked metadata.

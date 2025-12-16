@@ -52,10 +52,16 @@ public:
   /// - include regex OR "all"
   std::unordered_map<std::string, std::string> filter_topics(
     const std::map<std::string, std::vector<std::string>> & topic_names_and_types);
+  /// Filter latched topics from the given topics and transient local topics
+  /// Return the resulting filtered set
+  std::vector<std::string> filter_latched_topics(
+    const std::unordered_map<std::string, std::string> & topics_names_and_types,
+    const std::unordered_map<std::string, std::string> & transient_local_topics_names_and_types);
 
 private:
   /// Return true if the topic passes all filter criteria
   bool take_topic(const std::string & topic_name, const std::vector<std::string> & topic_types);
+  bool take_latched_topic(const std::string & topic_name, bool is_transient_local);
   bool type_is_known(const std::string & topic_name, const std::string & topic_type);
 
   RecordOptions record_options_;

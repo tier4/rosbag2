@@ -57,8 +57,7 @@ public:
 
   virtual void add_event_callbacks(const bag_events::WriterEventCallbacks & callbacks) = 0;
 
-  virtual void set_latched_topics(
-    const std::vector<std::string> & latched_topics, const std::string & latched_regex) = 0;
+  virtual void set_latched_topics(const std::vector<std::string> & latched_topics) = 0;
 };
 
 }  // namespace writer_interfaces

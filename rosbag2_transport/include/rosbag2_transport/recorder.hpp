@@ -130,6 +130,11 @@ private:
   void topics_discovery();
 
   std::unordered_map<std::string, std::string>
+  get_transient_local_topics(const std::unordered_map<std::string, std::string> & topics);
+
+  bool is_transient_local_topic(const std::string & topic_name);
+
+  std::unordered_map<std::string, std::string>
   get_missing_topics(const std::unordered_map<std::string, std::string> & all_topics);
 
   void subscribe_topics(
@@ -155,6 +160,9 @@ private:
   std::string serialized_offered_qos_profiles_for_topic(const std::string & topic_name);
 
   void warn_if_new_qos_for_subscribed_topic(const std::string & topic_name);
+
+  std::vector<std::string> get_latched_topics(
+    const std::unordered_map<std::string, std::string> & topics);
 
   std::future<void> discovery_future_;
   std::unordered_map<std::string, std::shared_ptr<rclcpp::GenericSubscription>> subscriptions_;

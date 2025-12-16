@@ -380,14 +380,14 @@ void SequentialWriter::write(std::shared_ptr<rosbag2_storage::SerializedBagMessa
 
   // keep latest latched topics message
   if (is_latched_topic(message->topic_name)) {
-    RCLCPP_INFO_STREAM(
+    RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
-      "message is a latched topic : " << message->topic_name.c_str());
+      "update latched topic : " << message->topic_name.c_str());
     std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
     latched_topics_messages_.insert_or_assign(message->topic_name, message);
-    RCLCPP_INFO_STREAM(
+    RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
-      "add latched_messages size: " << latched_topics_messages_.size());
+      "saved latched_messages size: " << latched_topics_messages_.size());
   } else {
     RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
@@ -397,16 +397,16 @@ void SequentialWriter::write(std::shared_ptr<rosbag2_storage::SerializedBagMessa
   // write message
   bool is_wrote_message = false;
   if (is_splitted_bagfile_ && !storage_options_.snapshot_mode) {
-    RCLCPP_INFO_STREAM(
+    RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
       "splited file latched_topics_messages_.size(): " <<
         latched_topics_messages_.size());
     is_splitted_bagfile_ = false;
-    if (!latched_topics_messages_.empty()) {
-      // write latched topic messages
-      write_latched_topic_messages(message->time_stamp);
-      if (is_latched_topic(message->topic_name)) {
-        is_wrote_message = true;
+    // write latched topic messages
+    {
+      std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
+      if (!latched_topics_messages_.empty()) {
+        is_wrote_message = write_latched_topic_messages(message->time_stamp, message->topic_name);
       }
     }
   } else {
@@ -435,21 +435,33 @@ SequentialWriter::get_latched_topic_messages()
   return messages;
 }
 
-void SequentialWriter::write_latched_topic_messages(const rcutils_time_point_value_t & time_stamp)
+bool SequentialWriter::write_latched_topic_messages(
+  const rcutils_time_point_value_t & time_stamp, const std::string & current_topic_name)
 {
-  std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
+  RCLCPP_DEBUG_STREAM(
+    rclcpp::get_logger("rosbag2_cpp"),
+    "write_latched_topic_messages size: " << latched_topics_messages_.size());
+  bool is_wrote_current_topic = false;
+  // std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, latched_message] : latched_topics_messages_) {
     #ifdef USE_MODIFIED_LATCHED_MESSAGE
     rosbag2_storage::SerializedBagMessage modified_latched_message{*latched_message};
     modified_latched_message.time_stamp = time_stamp;
     auto msg_ptr =
       std::make_shared<rosbag2_storage::SerializedBagMessage>(modified_latched_message);
+    RCLCPP_DEBUG_STREAM(
+      rclcpp::get_logger("rosbag2_cpp"),
+      "write_latched_topic_messages msg_ptr: " << msg_ptr->time_stamp);
     write_topic_message(msg_ptr);
     #else
     latched_message->time_stamp = time_stamp;
     write_topic_message(latched_message);
     #endif
+    if (topic == current_topic_name) {
+      is_wrote_current_topic = true;
+    }
   }
+  return is_wrote_current_topic;
 }
 
 void SequentialWriter::write_topic_message(
@@ -557,7 +569,7 @@ void SequentialWriter::write_messages(
   if (storage_options_.snapshot_mode) {
     // write messages with latched topic messages in front of non-latched topic messages
     auto latched_messages = get_latched_topic_messages();
-    RCLCPP_INFO_STREAM(
+    RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("rosbag2_cpp"),
       "snapshot latched_messages size: " << latched_messages.size());
     if (!latched_messages.empty()) {
@@ -613,33 +625,40 @@ void SequentialWriter::add_event_callbacks(const bag_events::WriterEventCallback
   }
 }
 
-bool SequentialWriter::is_latched_topic(const std::string & topic_name) const
+bool SequentialWriter::is_latched_topic(const std::string & topic_name)
 {
-  if (!latched_regex_.empty()) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "latched_regex_ : " << latched_regex_.c_str());
-    return std::regex_match(topic_name, std::regex(latched_regex_));
-  } else if (!latched_topics_.empty()) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "latched_topics_.size : " << latched_topics_.size());
-    return std::find(
-      latched_topics_.begin(), latched_topics_.end(),
-      topic_name) != latched_topics_.end();
-  } else {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "No latched_topics_ or latched_regex_.");
-  }
-  return false;
+  std::lock_guard<std::mutex> lock(latched_topics_mutex_);
+  return std::find(
+    latched_topics_.begin(), latched_topics_.end(),
+    topic_name) != latched_topics_.end();
 }
 
-void SequentialWriter::set_latched_topics(
-  const std::vector<std::string> & latched_topics, const std::string & latched_regex)
+void SequentialWriter::set_latched_topics(const std::vector<std::string> & latched_topics)
 {
-  latched_topics_ = latched_topics;
-  latched_regex_ = latched_regex;
+  RCLCPP_DEBUG_STREAM(
+    rclcpp::get_logger("rosbag2_cpp"),
+    "set_latched_topics size: " << latched_topics.size());
+  std::lock_guard<std::mutex> lock(latched_topics_mutex_);
+  for (const auto & topic : latched_topics) {
+    RCLCPP_DEBUG_STREAM(
+      rclcpp::get_logger("rosbag2_cpp"),
+      "set_latched_topics topic: " << topic);
+    if (
+      std::find(latched_topics_.begin(), latched_topics_.end(), topic) == latched_topics_.end())
+    {
+      RCLCPP_DEBUG_STREAM(
+        rclcpp::get_logger("rosbag2_cpp"),
+        "add latched topic: " << topic);
+      latched_topics_.emplace_back(topic);
+    } else {
+      RCLCPP_DEBUG_STREAM(
+        rclcpp::get_logger("rosbag2_cpp"),
+        "latched topic already exists: " << topic);
+    }
+  }
+  RCLCPP_DEBUG_STREAM(
+    rclcpp::get_logger("rosbag2_cpp"),
+    "registered latched topics: " << latched_topics_.size());
 }
 
 }  // namespace writers

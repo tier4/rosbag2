@@ -53,9 +53,6 @@ class RecordVerb(VerbExtension):
         parser.add_argument(
             'topics', nargs='*', default=None, help='List of topics to record.')
         parser.add_argument(
-            '--latched-topics', type=str, default=[], nargs='*',
-            help='latched topics to record in every bagfile, separated by space.')
-        parser.add_argument(
             '-a', '--all', action='store_true',
             help='Record all topics. Required if no explicit topic list or regex filters.')
         parser.add_argument(
@@ -67,8 +64,17 @@ class RecordVerb(VerbExtension):
             help='Exclude topics containing provided regular expression. '
             'Works on top of --all, --regex, or topics list.')
         parser.add_argument(
-            '--latched-regex', type=str, default='',
+            '--latched-topics', type=str, default=[], nargs='*',
+            help='latched topics to record in every bagfile, separated by space.')
+        parser.add_argument(
+            '--latched-all-transient-local', action='store_true',
+            help='record all transient local topics as latched topics in every bagfile.')
+        parser.add_argument(
+            '--latched-regex', default='',
             help='regex of latched topics to record in every bagfile, separated by space.')
+        parser.add_argument(
+            '--latched-exclude', default='',
+            help='Exclude transient local topics from latched topics.')
         parser.add_argument(
             '--include-unpublished-topics', action='store_true',
             help='Discover and record topics which have no publisher. '
@@ -187,10 +193,6 @@ class RecordVerb(VerbExtension):
         if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex)):
             return print_error('Invalid choice: Must specify topic(s), --regex or --all')
 
-        if (args.latched_regex and (args.latched_topics and len(args.latched_topics) > 0)):
-            return print_error('Specify either --latched-topics or --latched-regex, '
-                               'but not both simultaneously.')
-
         if args.all and args.regex:
             print('[WARN] [ros2bag]: --all will override --regex.')
 
@@ -200,6 +202,20 @@ class RecordVerb(VerbExtension):
 
         if args.exclude and not(args.regex or args.all):
             return print_error('--exclude argument requires either --all or --regex')
+
+        # both latched-all-transient-local and latched-topics cannot be true
+        if (args.latched_all_transient_local and args.latched_topics):
+            return print_error('Specify either --latched-all-transient-local or --latched-topics, '
+                               'but not both simultaneously.')
+
+        if args.latched_topics and args.latched_exclude:
+            return print_error('--latched-exclude argument cannot be used when specifying a list '
+                               'of latched topics explicitly')
+
+        if args.latched_exclude and not(args.latched_regex or args.latched_all_transient_local):
+            return print_error('--latched-exclude argument requires '
+                               'either --latched-all-transient-local '
+                               'or --latched-regex')
 
         uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
 
@@ -252,13 +268,15 @@ class RecordVerb(VerbExtension):
         record_options.all = args.all
         record_options.is_discovery_disabled = args.no_discovery
         record_options.topics = args.topics
-        record_options.latched_topics = args.latched_topics
         record_options.rmw_serialization_format = args.serialization_format
         record_options.topic_polling_interval = datetime.timedelta(
             milliseconds=args.polling_interval)
         record_options.regex = args.regex
         record_options.exclude = args.exclude
+        record_options.latched_all_transient_local = args.latched_all_transient_local
+        record_options.latched_topics = args.latched_topics
         record_options.latched_regex = args.latched_regex
+        record_options.latched_exclude = args.latched_exclude
         record_options.node_prefix = NODE_NAME_PREFIX
         record_options.compression_mode = args.compression_mode
         record_options.compression_format = args.compression_format

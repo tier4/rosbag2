@@ -193,10 +193,9 @@ void Writer::add_event_callbacks(bag_events::WriterEventCallbacks & callbacks)
   writer_impl_->add_event_callbacks(callbacks);
 }
 
-void Writer::set_latched_topics(
-  const std::vector<std::string> & latched_topics, const std::string & latched_regex)
+void Writer::set_latched_topics(const std::vector<std::string> & latched_topics)
 {
-  writer_impl_->set_latched_topics(latched_topics, latched_regex);
+  writer_impl_->set_latched_topics(latched_topics);
 }
 
 void Writer::close()

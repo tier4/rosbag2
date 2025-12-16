@@ -215,8 +215,7 @@ public:
    * \brief Set the latched topics.
    * \param latched_topics the vector of latched topics.
    */
-  void set_latched_topics(
-    const std::vector<std::string> & latched_topics, const std::string & latched_regex);
+  void set_latched_topics(const std::vector<std::string> & latched_topics);
 
   /**
    * \brief Close the current bag file and write metadata.yaml file
