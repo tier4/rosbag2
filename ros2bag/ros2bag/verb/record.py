@@ -68,10 +68,12 @@ class RecordVerb(VerbExtension):
             help='latched topics to record in every separated rosbag file, separated by space.')
         parser.add_argument(
             '--latched-all-transient-local', action='store_true',
-            help='record all transient local topics as latched topics in every separated rosbag file.')
+            help='record all transient local topics as latched topics '
+            'in every separated rosbag file.')
         parser.add_argument(
             '--latched-regex', default='',
-            help='regex of latched topics to record in every separated rosbag file, separated by space.')
+            help='regex of latched topics to record in every separated rosbag file, '
+            'separated by space.')
         parser.add_argument(
             '--latched-exclude', default='',
             help='Exclude topics from latched topics.')
