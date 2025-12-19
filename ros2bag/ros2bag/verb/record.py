@@ -65,16 +65,16 @@ class RecordVerb(VerbExtension):
             'Works on top of --all, --regex, or topics list.')
         parser.add_argument(
             '--latched-topics', type=str, default=[], nargs='*',
-            help='latched topics to record in every bagfile, separated by space.')
+            help='latched topics to record in every separated rosbag file, separated by space.')
         parser.add_argument(
             '--latched-all-transient-local', action='store_true',
-            help='record all transient local topics as latched topics in every bagfile.')
+            help='record all transient local topics as latched topics in every separated rosbag file.')
         parser.add_argument(
             '--latched-regex', default='',
-            help='regex of latched topics to record in every bagfile, separated by space.')
+            help='regex of latched topics to record in every separated rosbag file, separated by space.')
         parser.add_argument(
             '--latched-exclude', default='',
-            help='Exclude transient local topics from latched topics.')
+            help='Exclude topics from latched topics.')
         parser.add_argument(
             '--include-unpublished-topics', action='store_true',
             help='Discover and record topics which have no publisher. '
