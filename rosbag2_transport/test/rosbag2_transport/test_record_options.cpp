@@ -25,7 +25,9 @@ TEST(record_options, test_yaml_serialization)
   original.all_topics = true;
   original.all_services = true;
   original.is_discovery_disabled = true;
-  original.topics = {"topic", "other_topic"};
+  // original.topics = {"topic", "other_topic"};
+  original.topics = {"topic", "latched_topic", "other_topic"};
+  original.latched_topics = {"latched_topic"};
   original.services = {"service", "other_service"};
   original.exclude_topics = {"exclude_topic1", "exclude_topic2"};
   original.exclude_service_events = {"exclude_service1", "exclude_service2"};
@@ -33,6 +35,8 @@ TEST(record_options, test_yaml_serialization)
   original.topic_polling_interval = std::chrono::milliseconds{200};
   original.regex = "[xyz]/topic";
   original.exclude_regex = "[x]/topic";
+  original.latched_regex = "[xyz]/latched_topic";
+  original.latched_exclude = "[x]/latched_topic";
   original.node_prefix = "prefix";
   original.compression_mode = "stream";
   original.compression_format = "h264";
@@ -57,6 +61,9 @@ TEST(record_options, test_yaml_serialization)
   CHECK(services);
   CHECK(exclude_topics);
   CHECK(exclude_service_events);
+  CHECK(latched_topics);
+  CHECK(latched_regex);
+  CHECK(latched_exclude);
   CHECK(rmw_serialization_format);
   #undef CHECK
 }

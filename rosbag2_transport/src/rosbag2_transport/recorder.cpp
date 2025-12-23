@@ -334,7 +334,19 @@ void RecorderImpl::record()
   serialization_format_ = record_options_.rmw_serialization_format;
   RCLCPP_INFO(node->get_logger(), "Listening for topics...");
   if (!record_options_.use_sim_time) {
-    subscribe_topics(get_requested_or_available_topics());
+    // subscribe_topics(get_requested_or_available_topics());
+    auto topics_to_subscribe = get_requested_or_available_topics();
+    RCLCPP_DEBUG_STREAM(
+      get_logger(),
+      "Topics to subscribe: " << topics_to_subscribe.size());
+    auto latched_topics = get_latched_topics(topics_to_subscribe);
+    RCLCPP_DEBUG_STREAM(
+      get_logger(),
+      "Latched topics: " << latched_topics.size());
+    if (!latched_topics.empty()) {
+      writer_->set_latched_topics(latched_topics);
+    }
+    subscribe_topics(topics_to_subscribe);
   }
   if (!record_options_.is_discovery_disabled) {
     start_discovery();
@@ -466,6 +478,16 @@ void RecorderImpl::topics_discovery() noexcept
           warn_if_new_qos_for_subscribed_topic(topic_and_type.first);
         }
         auto missing_topics = get_missing_topics(topics_to_subscribe);
+        RCLCPP_DEBUG_STREAM(
+          get_logger(),
+          "Discovered missing_topics: " << missing_topics.size());
+        auto latched_topics = get_latched_topics(missing_topics);
+        RCLCPP_DEBUG_STREAM(
+          get_logger(),
+          "Discovered latched_topics: " << latched_topics.size());
+        if (!latched_topics.empty()) {
+          writer_->set_latched_topics(latched_topics);
+        }
         subscribe_topics(missing_topics);
       }
       node->wait_for_graph_change(discovery_graph_event_, record_options_.topic_polling_interval);
@@ -486,6 +508,26 @@ RecorderImpl::get_requested_or_available_topics()
   auto all_topics_and_types = node->get_topic_names_and_types();
   return topic_filter_->filter_topics(all_topics_and_types);
 }
+
+std::unordered_map<std::string, std::string>
+Recorder::get_transient_local_topics(const std::unordered_map<std::string, std::string> & topics)
+{
+  std::unordered_map<std::string, std::string> transient_local_topics;
+  for (const auto & topic_and_type : topics) {
+    if (is_transient_local_topic(topic_and_type.first)) {
+      transient_local_topics.emplace(topic_and_type);
+    }
+  }
+  return transient_local_topics;
+}
+
+bool Recorder::is_transient_local_topic(const std::string & topic_name)
+{
+  Rosbag2QoS subscription_qos{subscription_qos_for_topic(topic_name)};
+  return
+    subscription_qos.get_rmw_qos_profile().durability == RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+}
+
 
 std::unordered_map<std::string, std::string>
 RecorderImpl::get_missing_topics(const std::unordered_map<std::string, std::string> & all_topics)

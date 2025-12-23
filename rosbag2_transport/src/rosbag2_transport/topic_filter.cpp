@@ -119,6 +119,23 @@ std::unordered_map<std::string, std::string> TopicFilter::filter_topics(
   return filtered_topics;
 }
 
+std::vector<std::string> TopicFilter::filter_latched_topics(
+  const std::unordered_map<std::string, std::string> & topics_names_and_types,
+  const std::unordered_map<std::string, std::string> & transient_local_topics_names_and_types)
+{
+  std::vector<std::string> filtered_latched_topics;
+  for (const auto & [topic_name, topic_type] : topics_names_and_types) {
+    bool is_transient_local =
+      transient_local_topics_names_and_types.find(topic_name) !=
+      transient_local_topics_names_and_types.end();
+    if (take_latched_topic(topic_name, is_transient_local)) {
+      filtered_latched_topics.emplace_back(topic_name);
+    }
+  }
+  return filtered_latched_topics;
+}
+
+
 bool TopicFilter::take_topic(
   const std::string & topic_name, const std::vector<std::string> & topic_types)
 {
@@ -235,6 +252,60 @@ bool TopicFilter::take_topic(
   {
     return false;
   }
+
+  return true;
+}
+
+bool TopicFilter::take_latched_topic(const std::string & topic_name, bool is_transient_local)
+{
+  if (
+    !record_options_.latched_all_transient_local &&
+    record_options_.latched_topics.empty() &&
+    record_options_.latched_regex.empty())
+  {
+    // No latched topics to record
+    ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+      "topic_name: " << topic_name <<
+        " no latched_all_transient_local, no latched_topics, and no latched_regex");
+    return false;
+  }
+  // Latched topics to record
+  if (!record_options_.latched_topics.empty() &&
+    !topic_in_list(topic_name, record_options_.latched_topics))
+  {
+    // if latched_topics is not empty, and topic_name is not in latched_topics, return false
+    ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+      "topic_name: " << topic_name << " is not in latched_topics");
+    return false;
+  }
+  // Latched topics to exclude
+  std::regex exclude_regex(record_options_.latched_exclude);
+  if (!record_options_.latched_exclude.empty() && std::regex_search(topic_name, exclude_regex)) {
+    // if latched_exclude is not empty, and topic_name matches exclude_regex, return false
+    ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+      "topic_name: " << topic_name << " matches latched_exclude");
+    return false;
+  }
+  // All transient local as latched topics
+  if (record_options_.latched_all_transient_local && !is_transient_local) {
+    // if latched_all_transient_local is true, return false if topic is not transient local
+    ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+      "topic_name: " << topic_name << " is not a transient local.");
+    return false;
+  }
+  // Latched topics to record with regex
+  std::regex include_regex(record_options_.latched_regex);
+  if (
+    !record_options_.latched_regex.empty() && !std::regex_search(topic_name, include_regex))
+  {
+    // if latched_regex is not empty, and topic_name does not match include_regex, return false
+    ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+      "topic_name: " << topic_name << " does not match latched_regex");
+    return false;
+  }
+  // topic is latched, return true
+  ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
+    "topic_name: " << topic_name << " is taken");
 
   return true;
 }

@@ -40,6 +40,10 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["exclude_regex"] = record_options.exclude_regex;
   node["exclude_topics"] = record_options.exclude_topics;
   node["exclude_services"] = record_options.exclude_service_events;
+  node["latched_all_transient_local"] = record_options.latched_all_transient_local;
+  node["latched_topics"] = record_options.latched_topics;
+  node["latched_regex"] = record_options.latched_regex;
+  node["latched_exclude"] = record_options.latched_exclude;
   node["node_prefix"] = record_options.node_prefix;
   node["compression_mode"] = record_options.compression_mode;
   node["compression_format"] = record_options.compression_format;
@@ -52,6 +56,9 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["include_hidden_topics"] = record_options.include_hidden_topics;
   node["include_unpublished_topics"] = record_options.include_unpublished_topics;
   node["disable_keyboard_controls"] = record_options.disable_keyboard_controls;
+  node["start_paused"] = record_options.start_paused;
+  node["ignore_leaf_topics"] = record_options.ignore_leaf_topics;
+  node["use_sim_time"] = record_options.use_sim_time;
   return node;
 }
 
@@ -87,6 +94,11 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
     record_options.exclude_topic_types);
   optional_assign<std::vector<std::string>>(
     node, "exclude_services", record_options.exclude_service_events);
+  optional_assign<bool>(
+    node, "latched_all_transient_local", record_options.latched_all_transient_local);
+  optional_assign<std::vector<std::string>>(node, "latched_topics", record_options.latched_topics);
+  optional_assign<std::string>(node, "latched_regex", record_options.latched_regex);
+  optional_assign<std::string>(node, "latched_exclude", record_options.latched_exclude);
   optional_assign<std::string>(node, "node_prefix", record_options.node_prefix);
   optional_assign<std::string>(node, "compression_mode", record_options.compression_mode);
   optional_assign<std::string>(node, "compression_format", record_options.compression_format);

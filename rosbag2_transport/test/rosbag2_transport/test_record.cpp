@@ -524,3 +524,116 @@ TEST_F(RecordIntegrationTestFixture, toggle_paused_do_pause_resume)
   EXPECT_TRUE(recorder->is_paused());
   EXPECT_TRUE(test_output.find("Pausing recording.") != std::string::npos);
 }
+
+
+TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched_topic)
+{
+  auto string_message = get_messages_strings()[1];
+  std::string string_topic = "/string_topic";
+  std::string latched_topic = "/latched_topic";
+
+  bool callback_called = false;
+  std::string closed_file, opened_file;
+  rosbag2_cpp::bag_events::WriterEventCallbacks callbacks;
+  callbacks.write_split_callback =
+    [&callback_called, &closed_file, &opened_file](rosbag2_cpp::bag_events::BagSplitInfo & info) {
+      closed_file = info.closed_file;
+      opened_file = info.opened_file;
+      callback_called = true;
+    };
+  writer_->add_event_callbacks(callbacks);
+
+  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
+  mock_writer.set_max_messages_per_file(5);
+
+  rosbag2_transport::RecordOptions record_options = {
+    false, false, {string_topic, latched_topic}, "rmw_format", 100ms
+  };
+  auto recorder = std::make_shared<rosbag2_transport::Recorder>(
+    std::move(writer_), storage_options_, record_options);
+  recorder->record();
+  // EXPECT_EQ(mock_writer.get_latched_topics(), std::vector<std::string>({latched_topic}));
+
+  start_async_spin(recorder);
+
+  auto & writer = recorder->get_writer_handle();
+  mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
+
+  const size_t expected_messages = mock_writer.max_messages_per_file() + 1;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  pub_manager.setup_publisher(string_topic, string_message, expected_messages);
+  ASSERT_TRUE(pub_manager.wait_for_matched(string_topic.c_str()));
+  pub_manager.run_publishers();
+
+  auto ret = rosbag2_test_common::wait_until_shutdown(
+    std::chrono::seconds(5),
+    [&mock_writer, &expected_messages]() {
+      return mock_writer.get_messages().size() >= expected_messages;
+    });
+  auto recorded_messages = mock_writer.get_messages();
+  EXPECT_TRUE(ret) << "failed to capture expected messages in time";
+  EXPECT_THAT(recorded_messages, SizeIs(expected_messages));
+
+  // Confirm that the callback was called and the file names have been sent with the event
+  ASSERT_TRUE(callback_called);
+  EXPECT_EQ(closed_file, "BagFile0");
+  EXPECT_EQ(opened_file, "BagFile1");
+}
+
+TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched_regex)
+{
+  auto string_message = get_messages_strings()[1];
+  std::string string_topic = "/string_topic";
+  std::string latched_topic = "/latched_topic";
+
+  bool callback_called = false;
+  std::string closed_file, opened_file;
+  rosbag2_cpp::bag_events::WriterEventCallbacks callbacks;
+  callbacks.write_split_callback =
+    [&callback_called, &closed_file, &opened_file](rosbag2_cpp::bag_events::BagSplitInfo & info) {
+      closed_file = info.closed_file;
+      opened_file = info.opened_file;
+      callback_called = true;
+    };
+  writer_->add_event_callbacks(callbacks);
+
+  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
+  mock_writer.set_max_messages_per_file(5);
+
+  rosbag2_transport::RecordOptions record_options = {
+    false, false, {string_topic, latched_topic}, "rmw_format", 100ms
+  };
+  record_options.latched_regex = "latched_\\w+";
+  auto recorder = std::make_shared<rosbag2_transport::Recorder>(
+    std::move(writer_), storage_options_, record_options);
+  recorder->record();
+  // EXPECT_EQ(mock_writer.get_latched_regex(), "latched_\\w+");
+
+  start_async_spin(recorder);
+
+  auto & writer = recorder->get_writer_handle();
+  mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
+
+  const size_t expected_messages = mock_writer.max_messages_per_file() + 1;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  pub_manager.setup_publisher(string_topic, string_message, expected_messages);
+  ASSERT_TRUE(pub_manager.wait_for_matched(string_topic.c_str()));
+  pub_manager.run_publishers();
+
+  auto ret = rosbag2_test_common::wait_until_shutdown(
+    std::chrono::seconds(5),
+    [&mock_writer, &expected_messages]() {
+      return mock_writer.get_messages().size() >= expected_messages;
+    });
+  auto recorded_messages = mock_writer.get_messages();
+  EXPECT_TRUE(ret) << "failed to capture expected messages in time";
+  EXPECT_THAT(recorded_messages, SizeIs(expected_messages));
+
+  // Confirm that the callback was called and the file names have been sent with the event
+  ASSERT_TRUE(callback_called);
+  EXPECT_EQ(closed_file, "BagFile0");
+  EXPECT_EQ(opened_file, "BagFile1");
+}
+

@@ -138,6 +138,7 @@ TEST_F(RecordIntegrationTestFixture, regex_and_exclude_regex_topic_recording)
   {false, false, false, {}, {}, {}, {}, {}, {}, "rmw_format", 10ms};
   record_options.regex = regex;
   record_options.exclude_regex = topics_regex_to_exclude;
+  record_options.latched_regex = "latched_\\w+";
 
   // TODO(karsten1987) Refactor this into publication manager
   rosbag2_test_common::PublicationManager pub_manager;
