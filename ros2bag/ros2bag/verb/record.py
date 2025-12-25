@@ -287,16 +287,16 @@ def validate_parsed_arguments(args, uri) -> str:
     # both latched-all-transient-local and latched-topics cannot be true
     if (args.latched_all_transient_local and args.latched_topics):
         return print_error('Specify either --latched-all-transient-local or --latched-topics, '
-                            'but not both simultaneously.')
+                           'but not both simultaneously.')
 
     if args.latched_topics and args.latched_exclude:
         return print_error('--latched-exclude argument cannot be used when specifying a list '
-                            'of latched topics explicitly')
+                           'of latched topics explicitly')
 
-    if args.latched_exclude and not(args.latched_regex or args.latched_all_transient_local):
+    if args.latched_exclude and not (args.latched_regex or args.latched_all_transient_local):
         return print_error('--latched-exclude argument requires '
-                            'either --latched-all-transient-local '
-                            'or --latched-regex')
+                           'either --latched-all-transient-local '
+                           'or --latched-regex')
 
     if os.path.isdir(uri):
         return print_error("Output folder '{}' already exists.".format(uri))

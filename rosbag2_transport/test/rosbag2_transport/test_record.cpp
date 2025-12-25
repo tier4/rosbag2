@@ -46,7 +46,8 @@ TEST_F(RecordIntegrationTestFixture, published_messages_from_multiple_topics_are
   pub_manager.setup_publisher(array_topic, array_message, 2);
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {string_topic, array_topic}, {}, {}, {}, {}, {}, "rmw_format", 50ms};
+  {false, false, false, false, {string_topic, array_topic}, {}, {}, {}, {}, {}, {},
+    "rmw_format", 50ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -139,7 +140,7 @@ TEST_F(RecordIntegrationTestFixture, can_record_again_after_stop)
     test_topic, basic_type_message, num_messages_to_publish, rclcpp::QoS{rclcpp::KeepAll()}, 50ms);
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {test_topic}, {}, {}, {}, {}, {}, "rmw_format", 50ms};
+  {false, false, false, false, {test_topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 50ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -223,7 +224,7 @@ TEST_F(RecordIntegrationTestFixture, qos_is_stored_in_metadata)
   pub_manager.setup_publisher(topic, string_message, 2);
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {topic}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+  {false, false, false, false, {topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -288,7 +289,7 @@ TEST_F(RecordIntegrationTestFixture, records_sensor_data)
   pub_manager.setup_publisher(topic, string_message, 2, rclcpp::SensorDataQoS());
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {topic}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+  {false, false, false, false, {topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -332,7 +333,7 @@ TEST_F(RecordIntegrationTestFixture, receives_latched_messages)
   pub_manager.run_publishers();
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {topic}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+  {false, false, false, false, {topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -378,7 +379,7 @@ TEST_F(RecordIntegrationTestFixture, mixed_qos_subscribes) {
     topic, profile_transient_local);
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {topic}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+  {false, false, false, false, {topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -427,7 +428,7 @@ TEST_F(RecordIntegrationTestFixture, duration_and_noncompatibility_policies_mixe
   auto publisher_liveliness = create_pub(profile_liveliness);
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {topic}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+  {false, false, false, false, {topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -469,7 +470,7 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called)
   }
 
   rosbag2_transport::RecordOptions record_options =
-  {false, false, false, {string_topic}, {}, {}, {}, {}, {}, "rmw_format", 10ms};
+  {false, false, false, false, {string_topic}, {}, {}, {}, {}, {}, {}, "rmw_format", 10ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
 
@@ -543,12 +544,14 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
     };
   writer_->add_event_callbacks(callbacks);
 
-  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
-  mock_writer.set_max_messages_per_file(5);
+  {
+    auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
+    mock_writer.set_max_messages_per_file(5);
+  }
 
-  rosbag2_transport::RecordOptions record_options = {
-    false, false, {string_topic, latched_topic}, "rmw_format", 100ms
-  };
+  rosbag2_transport::RecordOptions record_options =
+  {false, false, false, false, {string_topic, latched_topic}, {}, {}, {}, {}, {}, {},
+    "rmw_format", 100ms};
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
     std::move(writer_), storage_options_, record_options);
   recorder->record();
@@ -557,7 +560,7 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
   start_async_spin(recorder);
 
   auto & writer = recorder->get_writer_handle();
-  mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
+  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
 
   const size_t expected_messages = mock_writer.max_messages_per_file() + 1;
 
@@ -566,11 +569,11 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
   ASSERT_TRUE(pub_manager.wait_for_matched(string_topic.c_str()));
   pub_manager.run_publishers();
 
-  auto ret = rosbag2_test_common::wait_until_shutdown(
-    std::chrono::seconds(5),
+  auto ret = rosbag2_test_common::wait_until_condition(
     [&mock_writer, &expected_messages]() {
-      return mock_writer.get_messages().size() >= expected_messages;
-    });
+      return mock_writer.get_number_of_recorded_messages() >= expected_messages;
+    },
+    std::chrono::seconds(5));
   auto recorded_messages = mock_writer.get_messages();
   EXPECT_TRUE(ret) << "failed to capture expected messages in time";
   EXPECT_THAT(recorded_messages, SizeIs(expected_messages));
@@ -598,11 +601,14 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
     };
   writer_->add_event_callbacks(callbacks);
 
-  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
-  mock_writer.set_max_messages_per_file(5);
+  {
+    auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer_->get_implementation_handle());
+    mock_writer.set_max_messages_per_file(5);
+  }
 
   rosbag2_transport::RecordOptions record_options = {
-    false, false, {string_topic, latched_topic}, "rmw_format", 100ms
+    false, false, false, false, {string_topic, latched_topic}, {}, {}, {}, {}, {}, {},
+    "rmw_format", 100ms
   };
   record_options.latched_regex = "latched_\\w+";
   auto recorder = std::make_shared<rosbag2_transport::Recorder>(
@@ -613,7 +619,7 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
   start_async_spin(recorder);
 
   auto & writer = recorder->get_writer_handle();
-  mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
+  auto & mock_writer = dynamic_cast<MockSequentialWriter &>(writer.get_implementation_handle());
 
   const size_t expected_messages = mock_writer.max_messages_per_file() + 1;
 
@@ -622,11 +628,11 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
   ASSERT_TRUE(pub_manager.wait_for_matched(string_topic.c_str()));
   pub_manager.run_publishers();
 
-  auto ret = rosbag2_test_common::wait_until_shutdown(
-    std::chrono::seconds(5),
+  auto ret = rosbag2_test_common::wait_until_condition(
     [&mock_writer, &expected_messages]() {
-      return mock_writer.get_messages().size() >= expected_messages;
-    });
+      return mock_writer.get_number_of_recorded_messages() >= expected_messages;
+    },
+    std::chrono::seconds(5));
   auto recorded_messages = mock_writer.get_messages();
   EXPECT_TRUE(ret) << "failed to capture expected messages in time";
   EXPECT_THAT(recorded_messages, SizeIs(expected_messages));
@@ -636,4 +642,3 @@ TEST_F(RecordIntegrationTestFixture, write_split_callback_is_called_with_latched
   EXPECT_EQ(closed_file, "BagFile0");
   EXPECT_EQ(opened_file, "BagFile1");
 }
-

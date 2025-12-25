@@ -162,8 +162,8 @@ protected:
   std::mutex latched_topics_mutex_;
   std::vector<std::string> latched_topics_;
   std::mutex latched_topics_messages_mutex_;
-  std::unordered_map<
-    std::string, std::shared_ptr<rosbag2_storage::SerializedBagMessage>> latched_topics_messages_;
+  std::unordered_map<std::string,
+    std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> latched_topics_messages_;
 
   std::string split_bagfile_local(bool execute_callbacks = true);
 
@@ -220,14 +220,15 @@ protected:
 
   // Write latched topics messages to the bag file
   bool write_latched_topic_messages(
-    const rcutils_time_point_value_t & time_stamp, const std::string & current_topic_name);
+    const rcutils_time_point_value_t & timestamp, const std::string & current_topic_name);
 
   // Get latched topics messages
-  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> get_latched_topic_messages();
+  std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>>
+  get_latched_topic_messages();
 
   // Write topic message to the bag file
   void write_topic_message(
-    std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
+    std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message);
 
   // Check if the topic is latched topic and should be written to every bag file
   bool is_latched_topic(const std::string & topic_name);

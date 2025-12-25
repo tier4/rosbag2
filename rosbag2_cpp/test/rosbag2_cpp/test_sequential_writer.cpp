@@ -529,7 +529,7 @@ TEST_F(
     write(An<const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> &>())).
   WillByDefault(
     [this, &written_messages]
-      (const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & msgs)
+    (const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & msgs)
     {
       written_messages += msgs.size();
       fake_storage_size_.fetch_add(static_cast<uint32_t>(msgs.size()));
@@ -566,8 +566,8 @@ TEST_F(
   storage_options_.snapshot_mode = false;
 
   writer_->open(storage_options_, {rmw_format, rmw_format});
-  writer_->create_topic({"test_topic", "test_msgs/BasicTypes", "", ""});
-  writer_->create_topic({"latched_topic", "test_msgs/BasicTypes", "", ""});
+  writer_->create_topic({0u, "test_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->create_topic({0u, "latched_topic", "test_msgs/BasicTypes", "", {}, ""});
   writer_->set_latched_topics({"latched_topic"});
 
   auto timeout = std::chrono::seconds(2);
@@ -694,8 +694,8 @@ TEST_F(SequentialWriterTest, snapshot_mode_write_on_trigger_with_latched_topics)
     msg_content.c_str(), msg_length);
 
   writer_->open(storage_options_, {rmw_format, rmw_format});
-  writer_->create_topic({"test_topic", "test_msgs/BasicTypes", "", ""});
-  writer_->create_topic({"latched_topic", "test_msgs/BasicTypes", "", ""});
+  writer_->create_topic({0u, "test_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->create_topic({0u, "latched_topic", "test_msgs/BasicTypes", "", {}, ""});
   writer_->set_latched_topics({"latched_topic"});
 
   for (auto i = 0u; i < 100; ++i) {

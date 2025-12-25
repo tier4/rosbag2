@@ -101,6 +101,10 @@ class RecordOptions:
     topic_qos_profile_overrides: dict
     topic_types: List[str]
     topics: List[str]
+    latched_all_transient_local: bool
+    latched_topics: List[str]
+    latched_regex: str
+    latched_exclude: str
     use_sim_time: bool
     def __init__(self) -> None: ...
 

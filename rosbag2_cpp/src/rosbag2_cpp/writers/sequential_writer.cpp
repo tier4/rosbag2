@@ -437,45 +437,37 @@ void SequentialWriter::write(std::shared_ptr<const rosbag2_storage::SerializedBa
 
   // keep latest latched topics message
   if (is_latched_topic(message->topic_name)) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "update latched topic : " << message->topic_name.c_str());
+    ROSBAG2_CPP_LOG_DEBUG("update latched topic : %s", message->topic_name.c_str());
     std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
     latched_topics_messages_.insert_or_assign(message->topic_name, message);
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "saved latched_messages size: " << latched_topics_messages_.size());
+    ROSBAG2_CPP_LOG_DEBUG("saved latched_messages size: %ld", latched_topics_messages_.size());
   } else {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "message is not a latched topic : " << message->topic_name.c_str());
+    ROSBAG2_CPP_LOG_DEBUG("message is not a latched topic : %s", message->topic_name.c_str());
   }
 
   // write message
   bool is_wrote_message = false;
   if (is_splitted_bagfile_ && !storage_options_.snapshot_mode) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "splited file latched_topics_messages_.size(): " <<
-        latched_topics_messages_.size());
+    ROSBAG2_CPP_LOG_DEBUG("splited file latched_topics_messages_.size(): %ld",
+      latched_topics_messages_.size());
     is_splitted_bagfile_ = false;
     // write latched topic messages
     {
       std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
       if (!latched_topics_messages_.empty()) {
-        is_wrote_message = write_latched_topic_messages(message->time_stamp, message->topic_name);
+        is_wrote_message = write_latched_topic_messages(message->recv_timestamp,
+          message->topic_name);
       }
     }
   } else {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "not add latched topics because not is_splitted_bagfile_(" << is_splitted_bagfile_ <<
-        ") or snapshot_mode(" << storage_options_.snapshot_mode << ")");
+    ROSBAG2_CPP_LOG_DEBUG(
+      "not add latched topics because not is_splitted_bagfile_(%s) or snapshot_mode(%s)",
+      is_splitted_bagfile_ ? "true" : "false",
+      storage_options_.snapshot_mode ? "true" : "false");
   }
 
   if (!is_wrote_message) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"), "write_topic_message");
+    ROSBAG2_CPP_LOG_DEBUG("write_topic_message");
     // write message to storage
     write_topic_message(message);
   }
@@ -497,10 +489,10 @@ void SequentialWriter::write(std::shared_ptr<const rosbag2_storage::SerializedBa
 }
 
 
-std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>>
+std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>>
 SequentialWriter::get_latched_topic_messages()
 {
-  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> messages;
+  std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> messages;
   std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, message] : latched_topics_messages_) {
     messages.push_back(message);
@@ -509,25 +501,22 @@ SequentialWriter::get_latched_topic_messages()
 }
 
 bool SequentialWriter::write_latched_topic_messages(
-  const rcutils_time_point_value_t & time_stamp, const std::string & current_topic_name)
+  const rcutils_time_point_value_t & timestamp, const std::string & current_topic_name)
 {
-  RCLCPP_DEBUG_STREAM(
-    rclcpp::get_logger("rosbag2_cpp"),
-    "write_latched_topic_messages size: " << latched_topics_messages_.size());
+  ROSBAG2_CPP_LOG_DEBUG("write_latched_topic_messages size: %ld", latched_topics_messages_.size());
   bool is_wrote_current_topic = false;
   // std::lock_guard<std::mutex> lock(latched_topics_messages_mutex_);
   for (auto & [topic, latched_message] : latched_topics_messages_) {
     #ifdef USE_MODIFIED_LATCHED_MESSAGE
     rosbag2_storage::SerializedBagMessage modified_latched_message{*latched_message};
-    modified_latched_message.time_stamp = time_stamp;
+    modified_latched_message.recv_timestamp = timestamp;
     auto msg_ptr =
       std::make_shared<rosbag2_storage::SerializedBagMessage>(modified_latched_message);
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "write_latched_topic_messages msg_ptr: " << msg_ptr->time_stamp);
+    ROSBAG2_CPP_LOG_DEBUG("write_latched_topic_messages msg_ptr recv_timestamp: %ld",
+      msg_ptr->recv_timestamp);
     write_topic_message(msg_ptr);
     #else
-    latched_message->time_stamp = time_stamp;
+    latched_message->recv_timestamp = timestamp;
     write_topic_message(latched_message);
     #endif
     if (topic == current_topic_name) {
@@ -538,7 +527,7 @@ bool SequentialWriter::write_latched_topic_messages(
 }
 
 void SequentialWriter::write_topic_message(
-  std::shared_ptr<rosbag2_storage::SerializedBagMessage> message)
+  std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message)
 {
   // Get TopicInformation handler for counting messages.
   rosbag2_storage::TopicInformation * topic_information_ptr{nullptr};
@@ -663,32 +652,26 @@ void SequentialWriter::write_messages(
   if (storage_options_.snapshot_mode) {
     // write messages with latched topic messages in front of non-latched topic messages
     auto latched_messages = get_latched_topic_messages();
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "snapshot latched_messages size: " << latched_messages.size());
+    ROSBAG2_CPP_LOG_DEBUG("snapshot latched_messages size: %ld", latched_messages.size());
     if (!latched_messages.empty()) {
       // replace latched_topic timestamp with the first message timestamp
-      const auto first_msg_timestamp = messages.front()->time_stamp;
+      const auto first_msg_timestamp = messages.front()->recv_timestamp;
       for (auto & msg : latched_messages) {
         #ifdef USE_MODIFIED_LATCHED_MESSAGE
         rosbag2_storage::SerializedBagMessage modified_msg{*msg};
-        modified_msg.time_stamp = first_msg_timestamp;
+        modified_msg.recv_timestamp = first_msg_timestamp;
         auto msg_ptr = std::make_shared<const rosbag2_storage::SerializedBagMessage>(modified_msg);
         write_messages.emplace_back(msg_ptr);
         #else
-        msg->time_stamp = first_msg_timestamp;
+        msg->recv_timestamp = first_msg_timestamp;
         write_messages.emplace_back(msg);
         #endif
       }
     }
   }
-  RCLCPP_DEBUG_STREAM(
-    rclcpp::get_logger("rosbag2_cpp"),
-    "messages size: " << messages.size());
+  ROSBAG2_CPP_LOG_DEBUG("messages size: %ld", messages.size());
   write_messages.insert(write_messages.end(), messages.begin(), messages.end());
-  RCLCPP_DEBUG_STREAM(
-    rclcpp::get_logger("rosbag2_cpp"),
-    "write_messages size: " << write_messages.size());
+  ROSBAG2_CPP_LOG_DEBUG("write_messages size: %ld", write_messages.size());
   storage_->write(write_messages);
 
   if (storage_options_.snapshot_mode) {
@@ -729,30 +712,20 @@ bool SequentialWriter::is_latched_topic(const std::string & topic_name)
 
 void SequentialWriter::set_latched_topics(const std::vector<std::string> & latched_topics)
 {
-  RCLCPP_DEBUG_STREAM(
-    rclcpp::get_logger("rosbag2_cpp"),
-    "set_latched_topics size: " << latched_topics.size());
+  ROSBAG2_CPP_LOG_DEBUG("set_latched_topics size: %ld", latched_topics.size());
   std::lock_guard<std::mutex> lock(latched_topics_mutex_);
   for (const auto & topic : latched_topics) {
-    RCLCPP_DEBUG_STREAM(
-      rclcpp::get_logger("rosbag2_cpp"),
-      "set_latched_topics topic: " << topic);
+    ROSBAG2_CPP_LOG_DEBUG("set_latched_topics topic: %s", topic.c_str());
     if (
       std::find(latched_topics_.begin(), latched_topics_.end(), topic) == latched_topics_.end())
     {
-      RCLCPP_DEBUG_STREAM(
-        rclcpp::get_logger("rosbag2_cpp"),
-        "add latched topic: " << topic);
+      ROSBAG2_CPP_LOG_DEBUG("add latched topic: %s", topic.c_str());
       latched_topics_.emplace_back(topic);
     } else {
-      RCLCPP_DEBUG_STREAM(
-        rclcpp::get_logger("rosbag2_cpp"),
-        "latched topic already exists: " << topic);
+      ROSBAG2_CPP_LOG_DEBUG("latched topic already exists: %s", topic.c_str());
     }
   }
-  RCLCPP_DEBUG_STREAM(
-    rclcpp::get_logger("rosbag2_cpp"),
-    "registered latched topics: " << latched_topics_.size());
+  ROSBAG2_CPP_LOG_DEBUG("registered latched topics: %ld", latched_topics_.size());
 }
 
 
