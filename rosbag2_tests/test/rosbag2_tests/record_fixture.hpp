@@ -145,7 +145,7 @@ public:
 
   template<typename MessageT>
   std::vector<std::shared_ptr<MessageT>> get_messages_for_topic(
-    const std::string & topic, const std::string & compression_plugin = "", int split_index = 0)
+    const std::string & topic, const std::string & compression_plugin = "")
   {
     auto filter = rosbag2_storage::StorageFilter{};
     filter.topics.push_back(topic);
