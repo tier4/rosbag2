@@ -261,7 +261,8 @@ bool TopicFilter::take_latched_topic(const std::string & topic_name, bool is_tra
   if (
     !record_options_.latched_all_transient_local &&
     record_options_.latched_topics.empty() &&
-    record_options_.latched_regex.empty())
+    record_options_.latched_regex.empty() &&
+    record_options_.latched_exclude.empty())
   {
     // No latched topics to record
     ROSBAG2_TRANSPORT_LOG_DEBUG_STREAM(
