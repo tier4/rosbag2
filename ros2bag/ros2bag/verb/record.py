@@ -210,14 +210,14 @@ class RecordVerb(VerbExtension):
             return print_error('Specify either --latched-all-transient-local or --latched-topics, '
                                'but not both simultaneously.')
 
-        if args.latched_topics and args.latched_exclude:
-            return print_error('--latched-exclude argument cannot be used when specifying a list '
-                               'of latched topics explicitly')
+        if args.latched_topics and (args.latched_regex or args.latched_exclude):
+            return print_error('--latched-regex or -latched-exclude argument cannot be used '
+                               'when specifying a list of latched topics explicitly')
 
-        if args.latched_exclude and not(args.latched_regex or args.latched_all_transient_local):
-            return print_error('--latched-exclude argument requires '
-                               'either --latched-all-transient-local '
-                               'or --latched-regex')
+        # if args.latched_exclude and not(args.latched_regex or args.latched_all_transient_local):
+        #     return print_error('--latched-exclude argument requires '
+        #                        'either --latched-all-transient-local '
+        #                        'or --latched-regex')
 
         uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
 

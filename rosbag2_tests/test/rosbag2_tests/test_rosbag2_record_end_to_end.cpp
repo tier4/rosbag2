@@ -523,7 +523,7 @@ TEST_F(RecordFixture, record_end_to_end_with_splitting_latched_topic_splits_bagf
   pub_manager.setup_publisher(topic_name, message, message_count - expected_splits);
   std::stringstream command;
   command << "ros2 bag record" <<
-    " --latched-topic " << latched_topic_name <<
+    " --latched-topics " << latched_topic_name <<
     " --output " << root_bag_path_.string() <<
     " --max-bag-size " << bagfile_split_size <<
     " " << topic_name << " " << latched_topic_name;
@@ -614,7 +614,7 @@ TEST_F(
   pub_manager.setup_publisher(topic_name, message, message_count - expected_splits * 2);
   std::stringstream command;
   command << "ros2 bag record" <<
-    " --latched-topic " << latched_topic1_name << " " << latched_topic2_name <<
+    " --latched-topics " << latched_topic1_name << " " << latched_topic2_name <<
     " --output " << root_bag_path_.string() <<
     " --max-bag-size " << bagfile_split_size <<
     " " << topic_name << " " << latched_topic1_name << " " << latched_topic2_name;
@@ -887,7 +887,7 @@ TEST_F(
   pub_manager.setup_publisher(topic_name, message, message_count - expected_splits - 1);
   std::stringstream command;
   command << "ros2 bag record" <<
-    " --latched-all " <<
+    " --latched-all-transient-local " <<
     " --latched-exclude " << topic_exclude_regex <<
     " --output " << root_bag_path_.string() <<
     " --max-bag-size " << bagfile_split_size <<
