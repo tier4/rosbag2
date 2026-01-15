@@ -227,3 +227,131 @@ def test_recorder_validate_exclude_services_needs_inclusive_args(test_arguments_
     'or --regex'
     matches = expected_output in error_str
     assert matches, ERROR_STRING_MSG.format(expected_output, error_str)
+
+
+def test_recorder_all_transient_local_topics(test_arguments_parser):
+    """Test that --latched-all-transient-local."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-all-transient-local',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is True
+    assert [] == args.latched_topics
+    assert '' == args.latched_regex
+    assert '' == args.latched_exclude
+
+
+def test_recorder_latched_topics(test_arguments_parser):
+    """Test that --latched-topics."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-topics', 'topic1', 'topic2',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is False
+    assert ['topic1', 'topic2'] == args.latched_topics
+    assert '' == args.latched_regex
+    assert '' == args.latched_exclude
+
+
+def test_recorder_all_transient_local_topics_with_regex(test_arguments_parser):
+    """Test that --latched-all-transient-local and --latched-regex."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-all-transient-local', '--latched-regex', 'topic\\d+',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is True
+    assert [] == args.latched_topics
+    assert 'topic\\d+' == args.latched_regex
+    assert '' == args.latched_exclude
+
+
+def test_recorder_all_transient_local_topics_with_exclude_regex(test_arguments_parser):
+    """Test --latched-all-transient-local and --latched-exclude."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-all-transient-local', '--latched-exclude', 'extopic\\d+',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is True
+    assert [] == args.latched_topics
+    assert '' == args.latched_regex
+    assert 'extopic\\d+' == args.latched_exclude
+
+
+def test_recorder_all_transient_local_topics_with_regex_and_exclude_regex(test_arguments_parser):
+    """Test that set --latched-all-transient-local, --latched-regex and --latched-exclude."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-all-transient-local', '--latched-regex', 'topic\\d+',
+         '--latched-exclude', 'extopic\\d+', '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is True
+    assert [] == args.latched_topics
+    assert 'topic\\d+' == args.latched_regex
+    assert 'extopic\\d+' == args.latched_exclude
+
+
+def test_recorder_all_transient_local_and_latched_topics(test_arguments_parser):
+    """Test that set both --latched-all-transient-local and --latched-topics."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-all-transient-local', '--latched-topics', 'topic1', 'topic2',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is True
+    assert ['topic1', 'topic2'] == args.latched_topics
+    assert '' == args.latched_regex
+    assert '' == args.latched_exclude
+
+    uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
+    error_str = validate_parsed_arguments(args, uri)
+    assert error_str is not None
+    expected_output = 'Specify either --latched-all-transient-local or --latched-topics,' \
+        ' but not both simultaneously.'
+    matches = expected_output in error_str
+    assert matches, ERROR_STRING_MSG.format(expected_output, error_str)
+
+
+def test_recorder_latched_topics_and_latched_regex(test_arguments_parser):
+    """Test that set --latched-topics and --latched_regex."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-topics', 'topic1', 'topic2', '--latched-regex', 'topic\\d+',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is False
+    assert ['topic1', 'topic2'] == args.latched_topics
+    assert 'topic\\d+' == args.latched_regex
+    assert '' == args.latched_exclude
+
+    uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
+    error_str = validate_parsed_arguments(args, uri)
+    assert error_str is not None
+    expected_output = '--latched-regex or -latched-exclude argument cannot be used' \
+        ' when specifying a list of latched topics explicitly'
+    matches = expected_output in error_str
+    assert matches, ERROR_STRING_MSG.format(expected_output, error_str)
+
+
+def test_recorder_latched_topics_and_latched_exclude(test_arguments_parser):
+    """Test that set --latched-topics and --latched_exclude."""
+    output_path = RESOURCES_PATH / 'ros2bag_tmp_file'
+    args = test_arguments_parser.parse_args(
+        ['--all-topics', '--latched-topics', 'topic1', 'topic2', '--latched-exclude', 'topic\\d+',
+         '--output', output_path.as_posix()]
+    )
+    assert args.latched_all_transient_local is False
+    assert ['topic1', 'topic2'] == args.latched_topics
+    assert '' == args.latched_regex
+    assert 'topic\\d+' == args.latched_exclude
+
+    uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
+    error_str = validate_parsed_arguments(args, uri)
+    assert error_str is not None
+    expected_output = '--latched-regex or -latched-exclude argument cannot be used' \
+        ' when specifying a list of latched topics explicitly'
+    matches = expected_output in error_str
+    assert matches, ERROR_STRING_MSG.format(expected_output, error_str)
