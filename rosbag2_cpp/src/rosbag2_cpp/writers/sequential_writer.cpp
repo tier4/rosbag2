@@ -334,6 +334,24 @@ void SequentialWriter::switch_to_next_storage()
     base_folder_,
     metadata_.relative_file_paths.size());
 
+  // Fast path for storage plugins that implement rollover() (e.g. MCAP).
+  // File rotation and schema/channel re-registration are handled by the plugin itself.
+  // Returning here intentionally skips the generic fallback below, which
+  // recreates the storage and re-registers all topics (~200+ ms with hundreds of topics).
+  if (storage_->rollover(storage_options_)) {
+    rosbag2_storage::FileInformation file_info{};
+    file_info.starting_time =
+      std::chrono::time_point<std::chrono::high_resolution_clock>(std::chrono::nanoseconds::max());
+    file_info.path = strip_parent_path(storage_->get_relative_file_path());
+    metadata_.files.push_back(file_info);
+    metadata_.relative_file_paths.push_back(file_info.path);
+
+    if (use_cache_) {
+      cache_consumer_->start();
+    }
+    return;
+  }
+
   // TODO(morlov): If we would ever remove the upper level writer mutex lock, consider protecting
   //  storage_ with mutex to avoid race conditions with write(msg) call when we are switching to
   //  next storage and not using cache.
