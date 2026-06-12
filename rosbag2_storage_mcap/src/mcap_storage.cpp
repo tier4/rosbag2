@@ -222,9 +222,11 @@ public:
 #ifdef ROSBAG2_STORAGE_MCAP_HAS_UPDATE_METADATA
   void update_metadata(const rosbag2_storage::BagMetadata &) override;
 #endif
+  bool rollover(const rosbag2_storage::StorageOptions & storage_options) override;
 
 private:
   void write_lock_free(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg);
+  void register_cached_topics();
   void open_impl(const std::string & uri, const std::string & preset_profile,
                  rosbag2_storage::storage_interfaces::IOFlag io_flag,
                  const std::string & storage_config_uri);
@@ -261,6 +263,13 @@ private:
 
   std::unique_ptr<mcap::McapWriter> mcap_writer_;
   rosbag2_storage_mcap::internal::MessageDefinitionCache msgdef_cache_{};
+
+  McapWriterOptions writer_options_;
+  bool writer_options_initialized_{false};
+  std::unordered_map<std::string, mcap::Schema> cached_mcap_schemas_
+    RCPPUTILS_TSA_GUARDED_BY(mcap_storage_mutex_);
+  std::unordered_map<std::string, mcap::Channel> cached_mcap_channels_
+    RCPPUTILS_TSA_GUARDED_BY(mcap_storage_mutex_);
 
   bool has_read_summary_ = false;
   bool has_added_ros_distro_metadata_ = false;
@@ -368,6 +377,8 @@ void MCAPStorage::open_impl(const std::string & uri, const std::string & preset_
       if (!status.ok()) {
         throw std::runtime_error(status.message);
       }
+      writer_options_ = options;
+      writer_options_initialized_ = true;
       ensure_rosdistro_metadata_added();
       break;
     }
@@ -763,6 +774,7 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic)
                               datatype.c_str(), err.what());
       schema.encoding = "";
     }
+    cached_mcap_schemas_[datatype] = schema;
     mcap_writer_->addSchema(schema);
     schema_ids_.emplace(datatype, schema.id);
     schema_id = schema.id;
@@ -779,6 +791,7 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic)
     channel.schemaId = schema_id;
     channel.metadata.emplace("offered_qos_profiles",
                              topic_info.topic_metadata.offered_qos_profiles);
+    cached_mcap_channels_[topic.name] = channel;
     mcap_writer_->addChannel(channel);
     channel_ids_.emplace(topic.name, channel.id);
   }
@@ -792,7 +805,70 @@ void MCAPStorage::remove_topic(const rosbag2_storage::TopicMetadata & topic)
     const auto & datatype = topic_it->second.topic_metadata.type;
     schema_ids_.erase(datatype);
     topics_.erase(topic.name);
+    channel_ids_.erase(topic.name);
+    cached_mcap_channels_.erase(topic.name);
+    const bool datatype_still_used = std::any_of(
+      topics_.begin(), topics_.end(),
+      [&datatype](const auto & entry) {
+        return entry.second.topic_metadata.type == datatype;
+      });
+    if (!datatype_still_used) {
+      cached_mcap_schemas_.erase(datatype);
+    }
   }
+}
+
+void MCAPStorage::register_cached_topics()
+{
+  schema_ids_.clear();
+  channel_ids_.clear();
+
+  for (const auto & [datatype, schema_template] : cached_mcap_schemas_) {
+    mcap::Schema schema = schema_template;
+    mcap_writer_->addSchema(schema);
+    schema_ids_.emplace(datatype, schema.id);
+  }
+
+  for (const auto & [topic_name, channel_template] : cached_mcap_channels_) {
+    const auto topic_it = topics_.find(topic_name);
+    if (topic_it == topics_.end()) {
+      continue;
+    }
+    mcap::Channel channel = channel_template;
+    const auto & datatype = topic_it->second.topic_metadata.type;
+    channel.schemaId = schema_ids_.at(datatype);
+    mcap_writer_->addChannel(channel);
+    channel_ids_.emplace(topic_name, channel.id);
+  }
+}
+
+bool MCAPStorage::rollover(const rosbag2_storage::StorageOptions & storage_options)
+{
+  if (!mcap_writer_ || !writer_options_initialized_ || cached_mcap_channels_.empty()) {
+    return false;
+  }
+
+  std::lock_guard<std::mutex> lock(mcap_storage_mutex_);
+  mcap_writer_->close();
+
+  relative_path_ = storage_options.uri + FILE_EXTENSION;
+  mcap_writer_ = std::make_unique<mcap::McapWriter>();
+  auto status = mcap_writer_->open(relative_path_, writer_options_);
+  if (!status.ok()) {
+    throw std::runtime_error(status.message);
+  }
+
+  for (auto & [topic_name, topic_info] : topics_) {
+    (void)topic_name;
+    topic_info.message_count = 0;
+  }
+  metadata_.message_count = 0;
+  metadata_.duration = std::chrono::nanoseconds(0);
+  metadata_.starting_time = time_point(std::chrono::nanoseconds::max());
+  metadata_.relative_file_paths = {get_relative_file_path()};
+
+  register_cached_topics();
+  return true;
 }
 
 #ifdef ROSBAG2_STORAGE_MCAP_HAS_UPDATE_METADATA

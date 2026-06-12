@@ -20,6 +20,7 @@
 #include "rosbag2_storage/storage_filter.hpp"
 #include "rosbag2_storage/storage_interfaces/read_only_interface.hpp"
 #include "rosbag2_storage/storage_interfaces/base_write_interface.hpp"
+#include "rosbag2_storage/storage_options.hpp"
 #include "rosbag2_storage/storage_traits.hpp"
 #include "rosbag2_storage/visibility_control.hpp"
 
@@ -58,6 +59,14 @@ public:
   }
 
   void seek(const rcutils_time_point_value_t & timestamp) override = 0;
+
+  /// \brief Close the current bag file and open a new one, registering cached topics in the new file.
+  /// \return true if rollover succeeded; false if not supported (caller should open a new storage).
+  virtual bool rollover(const StorageOptions & storage_options)
+  {
+    (void)storage_options;
+    return false;
+  }
 };
 
 }  // namespace storage_interfaces
