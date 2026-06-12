@@ -275,6 +275,18 @@ void SequentialWriter::switch_to_next_storage()
   storage_options_.uri = format_storage_uri(
     base_folder_,
     metadata_.relative_file_paths.size());
+
+  // Fast path for storage plugins that implement rollover() (e.g. MCAP).
+  // File rotation and schema/channel re-registration are handled by the plugin itself.
+  // Returning here intentionally skips the generic fallback below, which
+  // recreates the storage and re-registers all topics (~200+ ms with hundreds of topics).
+  if (storage_->rollover(storage_options_)) {
+    if (use_cache_) {
+      cache_consumer_->start();
+    }
+    return;
+  }
+
   storage_ = storage_factory_->open_read_write(storage_options_);
 
   if (!storage_) {
