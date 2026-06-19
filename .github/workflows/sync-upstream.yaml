@@ -32,7 +32,7 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
           base-branch: tier4/${{ matrix.base_branch }}
           sync-pr-branch: sync-upstream-${{ matrix.base_branch }}
-          sync-target-repository: https://github.com/ros2/launch.git
+          sync-target-repository: https://github.com/ros2/rosbag2.git
           sync-target-branch: ${{ matrix.base_branch }}
           pr-title: "chore: sync upstream ${{ matrix.base_branch }}"
           pr-labels: |
