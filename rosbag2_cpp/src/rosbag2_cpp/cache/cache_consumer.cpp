@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include <memory>
 
 #include "rosbag2_cpp/cache/cache_consumer.hpp"
@@ -38,16 +39,29 @@ CacheConsumer::~CacheConsumer()
 
 void CacheConsumer::stop()
 {
+  using clock = std::chrono::steady_clock;
+  const auto stop_start = clock::now();
+
   message_cache_->begin_flushing();
   is_stop_issued_ = true;
 
   ROSBAG2_CPP_LOG_INFO_STREAM(
     "Writing remaining messages from cache to the bag. It may take a while");
 
+  double consumer_join_ms = 0.0;
   if (consumer_thread_.joinable()) {
+    const auto join_start = clock::now();
     consumer_thread_.join();
+    consumer_join_ms = std::chrono::duration<double, std::milli>(
+      clock::now() - join_start).count();
   }
   message_cache_->done_flushing();
+
+  const auto total_ms = std::chrono::duration<double, std::milli>(
+    clock::now() - stop_start).count();
+  ROSBAG2_CPP_LOG_INFO_STREAM(
+    "Cache consumer stop timing (ms): total=" << total_ms
+                                              << ", consumer_join=" << consumer_join_ms);
 }
 
 void CacheConsumer::start()
