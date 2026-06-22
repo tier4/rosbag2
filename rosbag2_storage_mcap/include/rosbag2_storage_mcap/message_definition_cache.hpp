@@ -15,18 +15,18 @@
 #ifndef ROSBAG2_STORAGE_MCAP__MESSAGE_DEFINITION_CACHE_HPP_
 #define ROSBAG2_STORAGE_MCAP__MESSAGE_DEFINITION_CACHE_HPP_
 
-#include "visibility_control.hpp"
-
+#include <mutex>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
+#include "visibility_control.hpp"
+
 namespace rosbag2_storage_mcap::internal
 {
-enum struct Format
-{
+enum struct Format {
   IDL,
   MSG,
   UNKNOWN,
@@ -57,15 +57,9 @@ private:
   std::string name_;
 
 public:
-  explicit DefinitionNotFoundError(std::string name)
-      : name_(std::move(name))
-  {
-  }
+  explicit DefinitionNotFoundError(std::string name) : name_(std::move(name)) {}
 
-  const char * what() const noexcept override
-  {
-    return name_.c_str();
-  }
+  const char * what() const noexcept override { return name_.c_str(); }
 };
 
 class MessageDefinitionCache final
@@ -98,13 +92,17 @@ private:
    */
   const MessageSpec & load_message_spec(const DefinitionIdentifier & definition_identifier);
 
+  std::pair<Format, std::string> get_full_text_unlocked(const std::string & package_resource_name);
+
   std::unordered_map<DefinitionIdentifier, MessageSpec, DefinitionIdentifierHash>
     msg_specs_by_definition_identifier_;
+  std::unordered_map<std::string, std::pair<Format, std::string>> full_text_by_datatype_;
+  std::mutex cache_mutex_;
 };
 
 ROSBAG2_STORAGE_MCAP_PUBLIC
-std::set<std::string> parse_dependencies(Format format, const std::string & text,
-                                         const std::string & package_context);
+std::set<std::string> parse_dependencies(
+  Format format, const std::string & text, const std::string & package_context);
 
 }  // namespace rosbag2_storage_mcap::internal
 

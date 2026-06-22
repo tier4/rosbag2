@@ -266,16 +266,34 @@ std::string SequentialWriter::format_storage_uri(
 
 void SequentialWriter::switch_to_next_storage()
 {
+  using clock = std::chrono::steady_clock;
+  const auto switch_start = clock::now();
+  auto to_ms = [](const auto & duration) {
+      return std::chrono::duration<double, std::milli>(duration).count();
+    };
+
+  double cache_flush_ms = 0.0;
+  double open_new_storage_ms = 0.0;
+  double close_old_storage_ms = 0.0;
+  double reregister_topics_ms = 0.0;
+  double cache_restart_ms = 0.0;
+
   // consume remaining message cache
   if (use_cache_) {
+    const auto cache_flush_start = clock::now();
     cache_consumer_->stop();
     message_cache_->log_dropped();
+    cache_flush_ms = to_ms(clock::now() - cache_flush_start);
   }
 
   storage_options_.uri = format_storage_uri(
     base_folder_,
     metadata_.relative_file_paths.size());
+
+  auto previous_storage = std::move(storage_);
+  const auto open_new_storage_start = clock::now();
   storage_ = storage_factory_->open_read_write(storage_options_);
+  open_new_storage_ms = to_ms(clock::now() - open_new_storage_start);
 
   if (!storage_) {
     std::stringstream errmsg;
@@ -284,15 +302,35 @@ void SequentialWriter::switch_to_next_storage()
     throw std::runtime_error(errmsg.str());
   }
 
+  const auto close_old_storage_start = clock::now();
+  previous_storage.reset();
+  close_old_storage_ms = to_ms(clock::now() - close_old_storage_start);
+
   // Re-register all topics since we rolled-over to a new bagfile.
+  const auto reregister_topics_start = clock::now();
   for (const auto & topic : topics_names_to_info_) {
     storage_->create_topic(topic.second.topic_metadata);
   }
+  reregister_topics_ms = to_ms(clock::now() - reregister_topics_start);
 
   if (use_cache_) {
+    const auto cache_restart_start = clock::now();
     // restart consumer thread for cache
     cache_consumer_->start();
+    cache_restart_ms = to_ms(clock::now() - cache_restart_start);
   }
+
+  const auto total_ms = to_ms(clock::now() - switch_start);
+  ROSBAG2_CPP_LOG_INFO_STREAM(
+    "Bag split storage switch timing (ms): "
+    << "total=" << total_ms
+    << ", cache_flush=" << cache_flush_ms
+    << ", open_new_storage=" << open_new_storage_ms
+    << ", close_old_storage=" << close_old_storage_ms
+    << ", reregister_topics=" << reregister_topics_ms
+    << " (" << topics_names_to_info_.size() << " topics)"
+    << ", cache_restart=" << cache_restart_ms
+    << ", new_file=\"" << storage_options_.uri << "\"");
 }
 
 std::string SequentialWriter::split_bagfile_local(bool execute_callbacks)

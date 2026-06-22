@@ -260,7 +260,8 @@ private:
   std::unique_ptr<mcap::LinearMessageView::Iterator> linear_iterator_;
 
   std::unique_ptr<mcap::McapWriter> mcap_writer_;
-  rosbag2_storage_mcap::internal::MessageDefinitionCache msgdef_cache_{};
+
+  static rosbag2_storage_mcap::internal::MessageDefinitionCache & msgdef_cache();
 
   bool has_read_summary_ = false;
   bool has_added_ros_distro_metadata_ = false;
@@ -268,6 +269,12 @@ private:
   std::optional<mcap::RecordOffset> last_read_message_offset_;
   std::optional<mcap::RecordOffset> last_enqueued_message_offset_;
 };
+
+rosbag2_storage_mcap::internal::MessageDefinitionCache & MCAPStorage::msgdef_cache()
+{
+  static rosbag2_storage_mcap::internal::MessageDefinitionCache cache;
+  return cache;
+}
 
 MCAPStorage::MCAPStorage()
 {
@@ -742,7 +749,7 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic)
     mcap::Schema schema;
     schema.name = datatype;
     try {
-      auto [format, full_text] = msgdef_cache_.get_full_text(datatype);
+      auto [format, full_text] = msgdef_cache().get_full_text(datatype);
       switch (format) {
         case rosbag2_storage_mcap::internal::Format::UNKNOWN:
           schema.encoding = "unknown";
