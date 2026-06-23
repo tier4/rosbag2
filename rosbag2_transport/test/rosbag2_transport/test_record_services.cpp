@@ -82,7 +82,10 @@ public:
     const auto record_topics =
       is_discovery_disabled_ ? std::vector<std::string>{} : std::vector<std::string>{test_topic_};
     rosbag2_transport::RecordOptions record_options =
-    {false, false, is_discovery_disabled_, false, record_topics, {}, {}, {}, {}, {}, {}, "rmw_format", 100ms};
+    {
+      false, false, is_discovery_disabled_, false, record_topics, 
+      {}, {}, {}, {}, {}, {}, "rmw_format", 100ms
+    };
 
     storage_options_.snapshot_mode = snapshot_mode_;
     storage_options_.max_cache_size = 700;

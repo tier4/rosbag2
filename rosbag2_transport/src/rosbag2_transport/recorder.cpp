@@ -146,7 +146,7 @@ private:
     const std::unordered_map<std::string, std::string> & topics);
 
   bool is_transient_local_topic(const std::string & topic_name);
-  
+
   /// \brief Helper wrapper function to set a service response as success.
   template<typename ResponseT>
   void set_service_success(
