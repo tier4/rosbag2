@@ -83,7 +83,7 @@ public:
       is_discovery_disabled_ ? std::vector<std::string>{} : std::vector<std::string>{test_topic_};
     rosbag2_transport::RecordOptions record_options =
     {
-      false, false, is_discovery_disabled_, false, record_topics, 
+      false, false, is_discovery_disabled_, false, record_topics,
       {}, {}, {}, {}, {}, {}, "rmw_format", 100ms
     };
 
