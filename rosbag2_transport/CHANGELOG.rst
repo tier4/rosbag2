@@ -2,6 +2,27 @@
 Changelog for package rosbag2_transport
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.26.11 (2026-06-03)
+--------------------
+* [kilted] Address flakiness in the "rosbag2_transport::test_record_services" tests (backport `#2368 <https://github.com/ros2/rosbag2/issues/2368>`_) (`#2379 <https://github.com/ros2/rosbag2/issues/2379>`_) (`#2400 <https://github.com/ros2/rosbag2/issues/2400>`_)
+  Co-authored-by: mergify[bot] <37929162+mergify[bot]@users.noreply.github.com>
+  Co-authored-by: Michael Orlov <morlovmr@gmail.com>
+* [kilted] Fix QoS overrides ignored when topic name has no leading slash (backport `#2394 <https://github.com/ros2/rosbag2/issues/2394>`_) (`#2405 <https://github.com/ros2/rosbag2/issues/2405>`_) (`#2413 <https://github.com/ros2/rosbag2/issues/2413>`_)
+  Co-authored-by: Sahil Lakhmani <126493645+lakhmanisahil@users.noreply.github.com>
+  Co-authored-by: Michael Orlov <morlovmr@gmail.com>
+* Contributors: mergify[bot]
+
+0.26.10 (2026-04-07)
+--------------------
+* [jazzy] Add on start recording callback for Recorder
+  (backport `#2340 <https://github.com/ros2/rosbag2/issues/2340>`_)
+* [jazzy] Address race condition in the "wait_for_playback_to_start()"
+  (backport `#2344 <https://github.com/ros2/rosbag2/issues/2344>`_)
+  (`#2359 <https://github.com/ros2/rosbag2/issues/2359>`_)
+* Address a possible deadlock in seek(timestamp) (`#2345 <https://github.com/ros2/rosbag2/issues/2345>`_) (`#2348 <https://github.com/ros2/rosbag2/issues/2348>`_)
+* [jazzy] Add missing "RecordOptions" fields to the encode/decode functions (backport `#2334 <https://github.com/ros2/rosbag2/issues/2334>`_) (`#2338 <https://github.com/ros2/rosbag2/issues/2338>`_)
+* Contributors: Michael Orlov <morlovmr@gmail.com>, mergify[bot]
+
 0.26.9 (2025-08-11)
 -------------------
 * [jazzy] Add public API to get player's starting time and playback duration (backport `#2095 <https://github.com/ros2/rosbag2/issues/2095>`_) (`#2102 <https://github.com/ros2/rosbag2/issues/2102>`_)

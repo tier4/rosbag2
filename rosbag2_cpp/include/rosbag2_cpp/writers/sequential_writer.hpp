@@ -164,6 +164,8 @@ protected:
   std::mutex latched_topics_messages_mutex_;
   std::unordered_map<std::string,
     std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> latched_topics_messages_;
+  /// \brief Flush the cache, update metadata and close the storage.
+  void flush_cache_update_metadata_and_close_storage();
 
   std::string split_bagfile_local(bool execute_callbacks = true);
 
