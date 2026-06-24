@@ -216,6 +216,11 @@ void Writer::add_event_callbacks(bag_events::WriterEventCallbacks & callbacks)
   writer_impl_->add_event_callbacks(callbacks);
 }
 
+void Writer::set_latched_topics(const std::vector<std::string> & latched_topics)
+{
+  writer_impl_->set_latched_topics(latched_topics);
+}
+
 void Writer::close()
 {
   std::lock_guard<std::mutex> writer_lock(writer_mutex_);

@@ -47,7 +47,9 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   // in `test_record_options.cpp` when updating the fields in RecordOptions.
   auto & [all, is_discovery_disabled, topics,
     rmw_serialization_format,
-    topic_polling_interval, regex, exclude, node_prefix,
+    topic_polling_interval, regex, exclude,
+    latched_all_transient_local, latched_topics, latched_regex, latched_exclude,
+    node_prefix,
     compression_mode, compression_format, compression_queue_size, compression_threads,
     topic_qos_profile_overrides,
     include_hidden_topics, include_unpublished_topics, ignore_leaf_topics,
@@ -60,6 +62,10 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["topic_polling_interval"] = topic_polling_interval;
   node["regex"] = regex;
   node["exclude"] = exclude;
+  node["latched_all_transient_local"] = latched_all_transient_local;
+  node["latched_topics"] = latched_topics;
+  node["latched_regex"] = latched_regex;
+  node["latched_exclude"] = latched_exclude;
   node["node_prefix"] = node_prefix;
   node["compression_mode"] = compression_mode;
   node["compression_format"] = compression_format;
@@ -85,7 +91,9 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   // in `test_record_options.cpp` when updating the fields in RecordOptions.
   auto & [all, is_discovery_disabled, topics,
     rmw_serialization_format,
-    topic_polling_interval, regex, exclude, node_prefix,
+    topic_polling_interval, regex, exclude,
+    latched_all_transient_local, latched_topics, latched_regex, latched_exclude,
+    node_prefix,
     compression_mode, compression_format, compression_queue_size, compression_threads,
     topic_qos_profile_overrides,
     include_hidden_topics, include_unpublished_topics, ignore_leaf_topics,
@@ -102,6 +110,10 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   // Map exclude to the "exclude_regex" for backward compatability.
   optional_assign<std::string>(node, "exclude", exclude);
   optional_assign<std::string>(node, "exclude_regex", exclude);
+  optional_assign<bool>(node, "latched_all_transient_local", latched_all_transient_local);
+  optional_assign<std::vector<std::string>>(node, "latched_topics", latched_topics);
+  optional_assign<std::string>(node, "latched_regex", latched_regex);
+  optional_assign<std::string>(node, "latched_exclude", latched_exclude);
   optional_assign<std::string>(node, "node_prefix", node_prefix);
   optional_assign<std::string>(node, "compression_mode", compression_mode);
   optional_assign<std::string>(node, "compression_format", compression_format);

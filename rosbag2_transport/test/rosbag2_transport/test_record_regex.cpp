@@ -132,6 +132,7 @@ TEST_F(RecordIntegrationTestFixture, regex_and_exclude_recording)
   rosbag2_transport::RecordOptions record_options = {false, false, {}, "rmw_format", 10ms};
   record_options.regex = regex;
   record_options.exclude = regex_exclude;
+  record_options.latched_regex = "latched_\\w+";
 
 
   // TODO(karsten1987) Refactor this into publication manager

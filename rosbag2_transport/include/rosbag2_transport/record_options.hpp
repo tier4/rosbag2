@@ -32,11 +32,15 @@ struct RecordOptions
 public:
   bool all = false;
   bool is_discovery_disabled = false;
-  std::vector<std::string> topics;
-  std::string rmw_serialization_format;
+  std::vector<std::string> topics{};
+  std::string rmw_serialization_format = "";
   std::chrono::milliseconds topic_polling_interval{100};
   std::string regex = "";
   std::string exclude = "";
+  bool latched_all_transient_local = false;
+  std::vector<std::string> latched_topics{};
+  std::string latched_regex = "";
+  std::string latched_exclude = "";
   std::string node_prefix = "";
   std::string compression_mode = "";
   std::string compression_format = "";

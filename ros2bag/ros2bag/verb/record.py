@@ -64,6 +64,20 @@ class RecordVerb(VerbExtension):
             help='Exclude topics containing provided regular expression. '
             'Works on top of --all, --regex, or topics list.')
         parser.add_argument(
+            '--latched-topics', type=str, default=[], nargs='*',
+            help='latched topics to record in every separated rosbag file, separated by space.')
+        parser.add_argument(
+            '--latched-all-transient-local', action='store_true',
+            help='record all transient local topics as latched topics '
+            'in every separated rosbag file.')
+        parser.add_argument(
+            '--latched-regex', default='',
+            help='regex of latched topics to record in every separated rosbag file, '
+            'separated by space.')
+        parser.add_argument(
+            '--latched-exclude', default='',
+            help='Exclude topics from latched topics.')
+        parser.add_argument(
             '--include-unpublished-topics', action='store_true',
             help='Discover and record topics which have no publisher. '
             'Subscriptions on such topics will be made with default QoS unless otherwise '
@@ -194,6 +208,20 @@ class RecordVerb(VerbExtension):
         if args.exclude and not(args.regex or args.all):
             return print_error('--exclude argument requires either --all or --regex')
 
+        # both latched-all-transient-local and latched-topics cannot be true
+        if (args.latched_all_transient_local and args.latched_topics):
+            return print_error('Specify either --latched-all-transient-local or --latched-topics, '
+                               'but not both simultaneously.')
+
+        if args.latched_topics and (args.latched_regex or args.latched_exclude):
+            return print_error('--latched-regex or -latched-exclude argument cannot be used '
+                               'when specifying a list of latched topics explicitly')
+
+        # if args.latched_exclude and not(args.latched_regex or args.latched_all_transient_local):
+        #     return print_error('--latched-exclude argument requires '
+        #                        'either --latched-all-transient-local '
+        #                        'or --latched-regex')
+
         uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
 
         if os.path.isdir(uri):
@@ -250,6 +278,10 @@ class RecordVerb(VerbExtension):
             milliseconds=args.polling_interval)
         record_options.regex = args.regex
         record_options.exclude = args.exclude
+        record_options.latched_all_transient_local = args.latched_all_transient_local
+        record_options.latched_topics = args.latched_topics
+        record_options.latched_regex = args.latched_regex
+        record_options.latched_exclude = args.latched_exclude
         record_options.node_prefix = NODE_NAME_PREFIX
         record_options.compression_mode = args.compression_mode
         record_options.compression_format = args.compression_format

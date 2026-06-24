@@ -24,11 +24,13 @@ TEST(record_options, test_yaml_serialization_deserialization)
   rosbag2_transport::RecordOptions original;
   original.all = true;
   original.is_discovery_disabled = true;
-  original.topics = {"topic", "other_topic"};
+  original.topics = {"topic", "latched_topic", "other_topic"};
+  original.latched_topics = {"latched_topic"};
   original.rmw_serialization_format = "cdr";
   original.topic_polling_interval = std::chrono::milliseconds{200};
-  original.regex = "[xyz]/topic";
+  original.regex = "latched_\\w+";
   original.exclude = "*";
+  original.latched_regex = "[xyz]/latched_topic";
   original.node_prefix = "prefix";
   original.compression_mode = "stream";
   original.compression_format = "h264";
@@ -52,6 +54,8 @@ TEST(record_options, test_yaml_serialization_deserialization)
   CHECK(all);
   CHECK(is_discovery_disabled);
   CHECK(topics);
+  CHECK(latched_topics);
+  CHECK(latched_regex);
   CHECK(rmw_serialization_format);
   CHECK(topic_polling_interval);
   CHECK(regex);
