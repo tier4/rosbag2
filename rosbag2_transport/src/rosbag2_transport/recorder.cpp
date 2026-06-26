@@ -339,7 +339,18 @@ void RecorderImpl::record(const std::string & uri)
 
   serialization_format_ = record_options_.rmw_serialization_format;
   if (!record_options_.use_sim_time) {
-    subscribe_topics(get_requested_or_available_topics());
+    auto topics_to_subscribe = get_requested_or_available_topics();
+    RCLCPP_DEBUG_STREAM(
+      node->get_logger(),
+      "Topics to subscribe: " << topics_to_subscribe.size());
+    auto latched_topics = get_latched_topics(topics_to_subscribe);
+    RCLCPP_DEBUG_STREAM(
+      node->get_logger(),
+      "Latched topics: " << latched_topics.size());
+    if (!latched_topics.empty()) {
+      writer_->set_latched_topics(latched_topics);
+    }
+    subscribe_topics(topics_to_subscribe);
   }
   if (!record_options_.is_discovery_disabled) {
     start_discovery();
@@ -549,41 +560,6 @@ void RecorderImpl::create_control_services()
     {
       response->paused = is_paused();
     });
-
-  rosbag2_cpp::bag_events::WriterEventCallbacks callbacks;
-  callbacks.write_split_callback =
-    [this](rosbag2_cpp::bag_events::BagSplitInfo & info) {
-      event_notifier_->on_bag_split_in_recorder(info);
-    };
-  writer_->add_event_callbacks(callbacks);
-
-  serialization_format_ = record_options_.rmw_serialization_format;
-  RCLCPP_INFO(node->get_logger(), "Listening for topics...");
-  if (!record_options_.use_sim_time) {
-    // subscribe_topics(get_requested_or_available_topics());
-    auto topics_to_subscribe = get_requested_or_available_topics();
-    RCLCPP_DEBUG_STREAM(
-      node->get_logger(),
-      "Topics to subscribe: " << topics_to_subscribe.size());
-    auto latched_topics = get_latched_topics(topics_to_subscribe);
-    RCLCPP_DEBUG_STREAM(
-      node->get_logger(),
-      "Latched topics: " << latched_topics.size());
-    if (!latched_topics.empty()) {
-      writer_->set_latched_topics(latched_topics);
-    }
-    subscribe_topics(topics_to_subscribe);
-  }
-  if (!record_options_.is_discovery_disabled) {
-    start_discovery();
-  }
-  if (record_options_.start_paused) {
-    RCLCPP_INFO(
-      node->get_logger(), "Wait for recording: Press %s to start.",
-      enum_key_code_to_str(Recorder::kPauseResumeToggleKey).c_str());
-  } else {
-    RCLCPP_INFO(node->get_logger(), "Recording...");
-  }
 }
 
 const rosbag2_cpp::Writer & RecorderImpl::get_writer_handle()
