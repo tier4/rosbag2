@@ -325,10 +325,33 @@ void SequentialWriter::switch_to_next_storage()
     message_cache_->log_dropped();
   }
 
-  storage_->update_metadata(metadata_);
+  // Do not call update_metadata() here: it serializes the full session BagMetadata (all topics,
+  // all split paths) to YAML and writes it into the closing bag file on every split. With hundreds
+  // of topics this blocks the recorder callback for ~100+ ms (#1149). Embedded file metadata is
+  // written on record close (flush_cache_update_metadata_and_close_storage); metadata.yaml is
+  // written at close() as well.
   storage_options_.uri = format_storage_uri(
     base_folder_,
     metadata_.relative_file_paths.size());
+
+  // Fast path for storage plugins that implement rollover() (e.g. MCAP).
+  // File rotation and schema/channel re-registration are handled by the plugin itself.
+  // Returning here intentionally skips the generic fallback below, which
+  // recreates the storage and re-registers all topics (~200+ ms with hundreds of topics).
+  if (storage_->rollover(storage_options_)) {
+    rosbag2_storage::FileInformation file_info{};
+    file_info.starting_time =
+      std::chrono::time_point<std::chrono::high_resolution_clock>(std::chrono::nanoseconds::max());
+    file_info.path = strip_parent_path(storage_->get_relative_file_path());
+    metadata_.files.push_back(file_info);
+    metadata_.relative_file_paths.push_back(file_info.path);
+
+    if (use_cache_) {
+      cache_consumer_->start();
+    }
+    return;
+  }
+
   // TODO(morlov): If we would ever remove the upper level writer mutex lock, consider protecting
   //  storage_ with mutex to avoid race conditions with write(msg) call when we are switching to
   //  next storage and not using cache.
@@ -347,7 +370,6 @@ void SequentialWriter::switch_to_next_storage()
   metadata_.files.push_back(file_info);
   metadata_.relative_file_paths.push_back(file_info.path);
 
-  storage_->update_metadata(metadata_);
   {
     // Re-register all topics since we rolled-over to a new bagfile.
     std::lock_guard<std::mutex> lock(topics_info_mutex_);
