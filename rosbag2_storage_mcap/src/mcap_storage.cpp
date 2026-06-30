@@ -46,11 +46,15 @@
 #include <mcap/mcap.hpp>
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
+#include <deque>
 #include <filesystem>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -165,6 +169,100 @@ static void OnProblem(const mcap::Status & status)
   RCUTILS_LOG_ERROR_NAMED(LOG_NAME, "%s", status.message.c_str());
 }
 
+namespace
+{
+
+/// Closes MCAP writers on a background thread so rollover can open the next file without
+/// blocking on summary/footer I/O for the previous file.
+class McapWriterAsyncCloser
+{
+public:
+  McapWriterAsyncCloser()
+  {
+    worker_ = std::thread([this]() {  worker_loop(); });
+  }
+
+  ~McapWriterAsyncCloser() { shutdown(); }
+
+  McapWriterAsyncCloser(const McapWriterAsyncCloser &) = delete;
+  McapWriterAsyncCloser & operator=(const McapWriterAsyncCloser &) = delete;
+
+  void enqueue(std::unique_ptr<mcap::McapWriter> writer, std::string relative_path)
+  {
+    if (!writer) {
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      queue_.push_back({std::move(writer), std::move(relative_path)});
+    }
+    cv_.notify_one();
+  }
+
+  void shutdown()
+  {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (shutdown_) {
+        return;
+      }
+      shutdown_ = true;
+    }
+    cv_.notify_all();
+    if (worker_.joinable()) {
+      worker_.join();
+    }
+  }
+
+private:
+  struct CloseJob
+  {
+    std::unique_ptr<mcap::McapWriter> writer;
+    std::string relative_path;
+  };
+
+  void worker_loop()
+  {
+    while (true) {
+      CloseJob job;
+      {
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock, [this]() { return shutdown_ || !queue_.empty(); });
+        if (shutdown_ && queue_.empty()) {
+          return;
+        }
+        job = std::move(queue_.front());
+        queue_.pop_front();
+      }
+
+      if (job.writer) {
+        const auto close_start = std::chrono::steady_clock::now();
+        try {
+          job.writer->close();
+        } catch (const std::exception & e) {
+          RCUTILS_LOG_ERROR_NAMED(
+            LOG_NAME, "Async MCAP close failed for \"%s\": %s", job.relative_path.c_str(),
+            e.what());
+        }
+        const double close_ms =
+          std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - close_start)
+            .count();
+        RCUTILS_LOG_INFO_NAMED(
+          LOG_NAME, "MCAP async close timing (ms): close=%.3f, file=\"%s\"", close_ms,
+          job.relative_path.c_str());
+      }
+    }
+  }
+
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::deque<CloseJob> queue_;
+  std::thread worker_;
+  bool shutdown_{false};
+};
+
+}  // namespace
+
 /**
  * A storage implementation for the MCAP file format.
  */
@@ -222,9 +320,11 @@ public:
 #ifdef ROSBAG2_STORAGE_MCAP_HAS_UPDATE_METADATA
   void update_metadata(const rosbag2_storage::BagMetadata &) override;
 #endif
+  bool rollover(const rosbag2_storage::StorageOptions & storage_options) override;
 
 private:
   void write_lock_free(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg);
+  void register_cached_topics();
   void open_impl(const std::string & uri, const std::string & preset_profile,
                  rosbag2_storage::storage_interfaces::IOFlag io_flag,
                  const std::string & storage_config_uri);
@@ -262,6 +362,15 @@ private:
   std::unique_ptr<mcap::McapWriter> mcap_writer_;
   rosbag2_storage_mcap::internal::MessageDefinitionCache msgdef_cache_{};
 
+  McapWriterOptions writer_options_;
+  bool writer_options_initialized_{false};
+  std::unordered_map<std::string, mcap::Schema> cached_mcap_schemas_
+    RCPPUTILS_TSA_GUARDED_BY(mcap_storage_mutex_);
+  std::unordered_map<std::string, mcap::Channel> cached_mcap_channels_
+    RCPPUTILS_TSA_GUARDED_BY(mcap_storage_mutex_);
+
+  std::unique_ptr<McapWriterAsyncCloser> async_writer_closer_;
+
   bool has_read_summary_ = false;
   bool has_added_ros_distro_metadata_ = false;
   rcutils_time_point_value_t last_read_time_point_ = 0;
@@ -282,6 +391,11 @@ MCAPStorage::~MCAPStorage()
   }
   if (input_) {
     input_->close();
+  }
+  // Wait for any rollover-triggered async closes before closing the active writer.
+  if (async_writer_closer_) {
+    async_writer_closer_->shutdown();
+    async_writer_closer_.reset();
   }
   if (mcap_writer_) {
     mcap_writer_->close();
@@ -367,6 +481,11 @@ void MCAPStorage::open_impl(const std::string & uri, const std::string & preset_
       auto status = mcap_writer_->open(relative_path_, options);
       if (!status.ok()) {
         throw std::runtime_error(status.message);
+      }
+      writer_options_ = options;
+      writer_options_initialized_ = true;
+      if (!async_writer_closer_) {
+        async_writer_closer_ = std::make_unique<McapWriterAsyncCloser>();
       }
       ensure_rosdistro_metadata_added();
       break;
@@ -763,6 +882,7 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic)
                               datatype.c_str(), err.what());
       schema.encoding = "";
     }
+    cached_mcap_schemas_[datatype] = schema;
     mcap_writer_->addSchema(schema);
     schema_ids_.emplace(datatype, schema.id);
     schema_id = schema.id;
@@ -779,6 +899,7 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic)
     channel.schemaId = schema_id;
     channel.metadata.emplace("offered_qos_profiles",
                              topic_info.topic_metadata.offered_qos_profiles);
+    cached_mcap_channels_[topic.name] = channel;
     mcap_writer_->addChannel(channel);
     channel_ids_.emplace(topic.name, channel.id);
   }
@@ -792,7 +913,126 @@ void MCAPStorage::remove_topic(const rosbag2_storage::TopicMetadata & topic)
     const auto & datatype = topic_it->second.topic_metadata.type;
     schema_ids_.erase(datatype);
     topics_.erase(topic.name);
+    channel_ids_.erase(topic.name);
+    cached_mcap_channels_.erase(topic.name);
+    const bool datatype_still_used = std::any_of(
+      topics_.begin(), topics_.end(),
+      [&datatype](const auto & entry) {
+        return entry.second.topic_metadata.type == datatype;
+      });
+    if (!datatype_still_used) {
+      cached_mcap_schemas_.erase(datatype);
+    }
   }
+}
+
+void MCAPStorage::register_cached_topics()
+{
+  using clock = std::chrono::steady_clock;
+  const auto register_start = clock::now();
+  auto to_ms = [](const auto & duration) {
+    return std::chrono::duration<double, std::milli>(duration).count();
+  };
+
+  schema_ids_.clear();
+  channel_ids_.clear();
+
+  const auto add_schemas_start = clock::now();
+  for (const auto & [datatype, schema_template] : cached_mcap_schemas_) {
+    mcap::Schema schema = schema_template;
+    mcap_writer_->addSchema(schema);
+    schema_ids_.emplace(datatype, schema.id);
+  }
+  const double add_schemas_ms = to_ms(clock::now() - add_schemas_start);
+
+  const auto add_channels_start = clock::now();
+  size_t channels_registered = 0;
+  for (const auto & [topic_name, channel_template] : cached_mcap_channels_) {
+    const auto topic_it = topics_.find(topic_name);
+    if (topic_it == topics_.end()) {
+      continue;
+    }
+    mcap::Channel channel = channel_template;
+    const auto & datatype = topic_it->second.topic_metadata.type;
+    channel.schemaId = schema_ids_.at(datatype);
+    mcap_writer_->addChannel(channel);
+    channel_ids_.emplace(topic_name, channel.id);
+    ++channels_registered;
+  }
+  const double add_channels_ms = to_ms(clock::now() - add_channels_start);
+
+  RCUTILS_LOG_INFO_NAMED(
+    LOG_NAME,
+    "MCAP register_cached_topics timing (ms): total=%.3f, add_schemas=%.3f (%zu schemas), "
+    "add_channels=%.3f (%zu channels)",
+    to_ms(clock::now() - register_start), add_schemas_ms, cached_mcap_schemas_.size(),
+    add_channels_ms, channels_registered);
+}
+
+bool MCAPStorage::rollover(const rosbag2_storage::StorageOptions & storage_options)
+{
+  if (!mcap_writer_ || !writer_options_initialized_ || cached_mcap_channels_.empty()) {
+    return false;
+  }
+
+  using clock = std::chrono::steady_clock;
+  const auto rollover_start = clock::now();
+  auto to_ms = [](const auto & duration) {
+    return std::chrono::duration<double, std::milli>(duration).count();
+  };
+
+  std::unique_ptr<mcap::McapWriter> old_writer;
+  std::string closing_relative_path;
+
+  {
+    std::lock_guard<std::mutex> lock(mcap_storage_mutex_);
+
+    old_writer = std::move(mcap_writer_);
+    closing_relative_path = relative_path_;
+
+    relative_path_ = storage_options.uri + FILE_EXTENSION;
+
+    const auto open_start = clock::now();
+    mcap_writer_ = std::make_unique<mcap::McapWriter>();
+    auto status = mcap_writer_->open(relative_path_, writer_options_);
+    const double open_ms = to_ms(clock::now() - open_start);
+    if (!status.ok()) {
+      mcap_writer_.reset();
+      mcap_writer_ = std::move(old_writer);
+      relative_path_ = closing_relative_path;
+      throw std::runtime_error(status.message);
+    }
+
+    const auto reset_metadata_start = clock::now();
+    for (auto & [topic_name, topic_info] : topics_) {
+      (void)topic_name;
+      topic_info.message_count = 0;
+    }
+    metadata_.message_count = 0;
+    metadata_.duration = std::chrono::nanoseconds(0);
+    metadata_.starting_time = time_point(std::chrono::nanoseconds::max());
+    metadata_.relative_file_paths = {get_relative_file_path()};
+    const double reset_metadata_ms = to_ms(clock::now() - reset_metadata_start);
+
+    const auto register_topics_start = clock::now();
+    register_cached_topics();
+    const double register_topics_ms = to_ms(clock::now() - register_topics_start);
+
+    const double sync_rollover_ms = to_ms(clock::now() - rollover_start);
+    RCUTILS_LOG_INFO_NAMED(
+      LOG_NAME,
+      "MCAP rollover timing (ms): sync_total=%.3f, close=async_scheduled, open=%.3f, "
+      "reset_metadata=%.3f, register_cached_topics=%.3f, closing_file=\"%s\", new_file=\"%s\"",
+      sync_rollover_ms, open_ms, reset_metadata_ms, register_topics_ms,
+      closing_relative_path.c_str(), relative_path_.c_str());
+  }
+
+  if (!async_writer_closer_) {
+    async_writer_closer_ = std::make_unique<McapWriterAsyncCloser>();
+  }
+  async_writer_closer_->enqueue(std::move(old_writer), std::move(closing_relative_path));
+
+  return true;
 }
 
 #ifdef ROSBAG2_STORAGE_MCAP_HAS_UPDATE_METADATA
