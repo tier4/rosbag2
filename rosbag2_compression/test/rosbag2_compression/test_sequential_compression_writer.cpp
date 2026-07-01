@@ -366,7 +366,10 @@ TEST_F(SequentialCompressionWriterTest, writer_call_metadata_update_on_bag_split
   initializeFakeFileStorage();
   initializeWriter(compression_options);
 
-  EXPECT_CALL(*storage_, update_metadata(_)).Times(4);
+  // update_metadata() is no longer called during switch_to_next_storage() (skipped for
+  // performance, see SequentialWriter::switch_to_next_storage()), so a split no longer triggers
+  // metadata updates. It is only called on opening the first bag file and on writer destruction.
+  EXPECT_CALL(*storage_, update_metadata(_)).Times(2);
   writer_->open(tmp_dir_storage_options_);
   writer_->create_topic({0u, test_topic_name, test_topic_type, "", {}, ""});
 
@@ -385,16 +388,14 @@ TEST_F(SequentialCompressionWriterTest, writer_call_metadata_update_on_bag_split
   }
   writer_.reset();  // reset will call writer destructor
 
-  ASSERT_EQ(v_intercepted_update_metadata_.size(), 4u);
+  ASSERT_EQ(v_intercepted_update_metadata_.size(), 2u);
   using rosbag2_compression::compression_mode_from_string;
   auto compression_mode =
     compression_mode_from_string(v_intercepted_update_metadata_[0].compression_mode);
   EXPECT_EQ(compression_mode, rosbag2_compression::CompressionMode::MESSAGE);
   EXPECT_EQ(v_intercepted_update_metadata_[0].message_count, 0u);  // On opening first bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[1].files.size(), 1u);   // On closing first bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[2].files.size(), 2u);   // On opening second bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[3].files.size(), 2u);   // On writer destruction
-  EXPECT_EQ(v_intercepted_update_metadata_[3].message_count, 2 * kNumMessagesToWrite);
+  EXPECT_EQ(v_intercepted_update_metadata_[1].files.size(), 2u);   // On writer destruction
+  EXPECT_EQ(v_intercepted_update_metadata_[1].message_count, 2 * kNumMessagesToWrite);
 }
 
 TEST_P(SequentialCompressionWriterTest, writer_writes_with_compression_queue_sizes)

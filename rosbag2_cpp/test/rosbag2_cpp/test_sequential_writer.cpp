@@ -251,7 +251,10 @@ TEST_F(SequentialWriterTest, sequantial_writer_call_metadata_update_on_bag_split
 {
   const std::string test_topic_name = "test_topic";
   const std::string test_topic_type = "test_msgs/BasicTypes";
-  EXPECT_CALL(*storage_, update_metadata(_)).Times(4);
+  // update_metadata() is no longer called during switch_to_next_storage() (skipped for
+  // performance, see SequentialWriter::switch_to_next_storage()), so a split no longer triggers
+  // metadata updates. It is only called on opening the first bag file and on writer destruction.
+  EXPECT_CALL(*storage_, update_metadata(_)).Times(2);
 
   auto sequential_writer = std::make_unique<rosbag2_cpp::writers::SequentialWriter>(
     std::move(storage_factory_), converter_factory_, std::move(metadata_io_));
@@ -276,13 +279,11 @@ TEST_F(SequentialWriterTest, sequantial_writer_call_metadata_update_on_bag_split
   }
   writer_.reset();  // reset will call writer destructor
 
-  ASSERT_EQ(v_intercepted_update_metadata_.size(), 4u);
+  ASSERT_EQ(v_intercepted_update_metadata_.size(), 2u);
   EXPECT_TRUE(v_intercepted_update_metadata_[0].compression_mode.empty());
   EXPECT_EQ(v_intercepted_update_metadata_[0].message_count, 0u);  // On opening first bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[1].files.size(), 1u);   // On closing first bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[2].files.size(), 2u);   // On opening second bag file
-  EXPECT_EQ(v_intercepted_update_metadata_[3].files.size(), 2u);   // On writer destruction
-  EXPECT_EQ(v_intercepted_update_metadata_[3].message_count, 2 * kNumMessagesToWrite);
+  EXPECT_EQ(v_intercepted_update_metadata_[1].files.size(), 2u);   // On writer destruction
+  EXPECT_EQ(v_intercepted_update_metadata_[1].message_count, 2 * kNumMessagesToWrite);
 }
 
 TEST_F(SequentialWriterTest, open_throws_error_if_converter_plugin_does_not_exist) {
@@ -892,23 +893,27 @@ TEST_F(SequentialWriterTest, snapshot_writes_to_new_file_with_bag_split)
   ASSERT_STREQ(closed_files[0].c_str(), expected_closed.generic_string().c_str());
   ASSERT_STREQ(opened_files[0].c_str(), expected_opened.generic_string().c_str());
 
+  // Reset the writer to finalize and flush the metadata. update_metadata() is no longer called
+  // during switch_to_next_storage() (skipped for performance, see
+  // SequentialWriter::switch_to_next_storage()), so the snapshot file information is reported in
+  // the final update_metadata() call on writer close instead of during the split.
+  writer_.reset();
+
   // Check metadata
-  ASSERT_EQ(v_intercepted_update_metadata_.size(), 3u);
-  // The v_intercepted_update_metadata_[0] is the very first metadata saved from the writer's
-  // constructor. We don't update it during the snapshot, and it doesn't make sense checking it.
-  // The v_intercepted_update_metadata_[1] is the metadata written right before closing the file
-  // with the new snapshot.
-  // The v_intercepted_update_metadata_[2] is the metadata written when we are opening a new file
-  // after switching to a new storage.
-  EXPECT_EQ(v_intercepted_update_metadata_[1].message_count, num_expected_msgs);
-  EXPECT_EQ(v_intercepted_update_metadata_[2].message_count, num_expected_msgs);
+  ASSERT_EQ(v_intercepted_update_metadata_.size(), 2u);
+  // The v_intercepted_update_metadata_[0] is the very first metadata saved when the first bag file
+  // is opened. We don't update it during the snapshot, and it doesn't make sense checking it.
+  // The v_intercepted_update_metadata_[1] is the final metadata written on writer close, which
+  // contains the snapshot file information.
+  const auto & final_metadata = v_intercepted_update_metadata_[1];
+  EXPECT_EQ(final_metadata.message_count, num_expected_msgs);
   EXPECT_EQ(
     std::chrono::time_point_cast<std::chrono::nanoseconds>(
-      v_intercepted_update_metadata_[1].starting_time).time_since_epoch().count(),
+      final_metadata.starting_time).time_since_epoch().count(),
     first_msg_timestamp);
 
-  ASSERT_FALSE(v_intercepted_update_metadata_[1].files.empty());
-  const auto & first_file_info = v_intercepted_update_metadata_[1].files[0];
+  ASSERT_FALSE(final_metadata.files.empty());
+  const auto & first_file_info = final_metadata.files[0];
   EXPECT_STREQ(first_file_info.path.c_str(), std::string(bag_base_dir_ + "_0").c_str());
   EXPECT_EQ(first_file_info.message_count, num_expected_msgs);
   EXPECT_EQ(
