@@ -41,9 +41,9 @@
 #include <mcap/mcap.hpp>
 
 #include <algorithm>
-#include <cstring>
 #include <chrono>
 #include <condition_variable>
+#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <memory>
@@ -181,10 +181,15 @@ class McapWriterAsyncCloser
 public:
   McapWriterAsyncCloser()
   {
-    worker_ = std::thread([this]() {  worker_loop(); });
+    worker_ = std::thread([this]() {
+      worker_loop();
+    });
   }
 
-  ~McapWriterAsyncCloser() { shutdown(); }
+  ~McapWriterAsyncCloser()
+  {
+    shutdown();
+  }
 
   McapWriterAsyncCloser(const McapWriterAsyncCloser &) = delete;
   McapWriterAsyncCloser & operator=(const McapWriterAsyncCloser &) = delete;
@@ -229,7 +234,9 @@ private:
       CloseJob job;
       {
         std::unique_lock<std::mutex> lock(mutex_);
-        cv_.wait(lock, [this]() { return shutdown_ || !queue_.empty(); });
+        cv_.wait(lock, [this]() {
+          return shutdown_ || !queue_.empty();
+        });
         if (shutdown_ && queue_.empty()) {
           return;
         }
@@ -242,16 +249,14 @@ private:
         try {
           job.writer->close();
         } catch (const std::exception & e) {
-          RCUTILS_LOG_ERROR_NAMED(
-            LOG_NAME, "Async MCAP close failed for \"%s\": %s", job.relative_path.c_str(),
-            e.what());
+          RCUTILS_LOG_ERROR_NAMED(LOG_NAME, "Async MCAP close failed for \"%s\": %s",
+                                  job.relative_path.c_str(), e.what());
         }
         const double close_ms =
           std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - close_start)
             .count();
-        RCUTILS_LOG_INFO_NAMED(
-          LOG_NAME, "MCAP async close timing (ms): close=%.3f, file=\"%s\"", close_ms,
-          job.relative_path.c_str());
+        RCUTILS_LOG_INFO_NAMED(LOG_NAME, "MCAP async close timing (ms): close=%.3f, file=\"%s\"",
+                               close_ms, job.relative_path.c_str());
       }
     }
   }
@@ -1071,9 +1076,8 @@ void MCAPStorage::remove_topic(const rosbag2_storage::TopicMetadata & topic)
     topics_.erase(topic.name);
     channel_ids_.erase(topic.name);
     cached_mcap_channels_.erase(topic.name);
-    const bool datatype_still_used = std::any_of(
-      topics_.begin(), topics_.end(),
-      [&datatype](const auto & entry) {
+    const bool datatype_still_used =
+      std::any_of(topics_.begin(), topics_.end(), [&datatype](const auto & entry) {
         return entry.second.topic_metadata.type == datatype;
       });
     if (!datatype_still_used) {
