@@ -106,6 +106,20 @@ def add_recorder_arguments(parser: ArgumentParser) -> None:
         '--exclude-services', type=str, metavar='ServiceName', nargs='+',
         help='Space-delimited list of services not being recorded. '
              'Works on top of --all, --all-services, --services or --regex.')
+    parser.add_argument(
+        '--latched-topics', type=str, default=[], nargs='*',
+        help='latched topics to record in every separated rosbag file, separated by space.')
+    parser.add_argument(
+        '--latched-all-transient-local', action='store_true',
+        help='record all transient local topics as latched topics '
+        'in every separated rosbag file.')
+    parser.add_argument(
+        '--latched-regex', default='',
+        help='regex of latched topics to record in every separated rosbag file, '
+        'separated by space.')
+    parser.add_argument(
+        '--latched-exclude', default='',
+        help='Exclude topics from latched topics.')
 
     # Discovery behavior
     parser.add_argument(
@@ -270,6 +284,20 @@ def validate_parsed_arguments(args, uri) -> str:
         print(print_warn('--all, --all-topics or --all-services will override --regex'),
               flush=True)
 
+    # both latched-all-transient-local and latched-topics cannot be true
+    if (args.latched_all_transient_local and args.latched_topics):
+        return print_error('Specify either --latched-all-transient-local or --latched-topics, '
+                           'but not both simultaneously.')
+
+    if args.latched_topics and (args.latched_regex or args.latched_exclude):
+        return print_error('--latched-regex or -latched-exclude argument cannot be used '
+                           'when specifying a list of latched topics explicitly')
+
+    # if args.latched_exclude and not (args.latched_regex or args.latched_all_transient_local):
+    #     return print_error('--latched-exclude argument requires '
+    #                        'either --latched-all-transient-local '
+    #                        'or --latched-regex')
+
     if os.path.isdir(uri):
         return print_error("Output folder '{}' already exists.".format(uri))
 
@@ -356,6 +384,10 @@ class RecordVerb(VerbExtension):
         record_options.exclude_topics = args.exclude_topics if args.exclude_topics else []
         record_options.exclude_service_events = \
             convert_service_to_service_event_topic(args.exclude_services)
+        record_options.latched_all_transient_local = args.latched_all_transient_local
+        record_options.latched_topics = args.latched_topics
+        record_options.latched_regex = args.latched_regex
+        record_options.latched_exclude = args.latched_exclude
         record_options.node_prefix = NODE_NAME_PREFIX
         record_options.compression_mode = args.compression_mode
         record_options.compression_format = args.compression_format

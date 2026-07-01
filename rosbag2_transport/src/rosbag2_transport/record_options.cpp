@@ -30,11 +30,11 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   // RecordOptions without updating this function.
   // Note: Please don't forget to update the test case `test_yaml_serialization_deserialization`
   // in `test_record_options.cpp` when updating the fields in RecordOptions.
-  auto & [all_topics, all_services, is_discovery_disabled,
+  auto & [all_topics, all_services, is_discovery_disabled, latched_all_transient_local,
     topics, topic_types, services,
     exclude_topics, exclude_topic_types, exclude_service_events,
-    rmw_serialization_format,
-    topic_polling_interval, regex, exclude_regex, node_prefix,
+    latched_topics, rmw_serialization_format,
+    topic_polling_interval, regex, exclude_regex, latched_regex, latched_exclude, node_prefix,
     compression_mode, compression_format, compression_queue_size, compression_threads,
     compression_threads_priority, topic_qos_profile_overrides,
     include_hidden_topics, include_unpublished_topics, ignore_leaf_topics,
@@ -43,16 +43,20 @@ Node convert<rosbag2_transport::RecordOptions>::encode(
   node["all_topics"] = all_topics;
   node["all_services"] = all_services;
   node["is_discovery_disabled"] = is_discovery_disabled;
+  node["latched_all_transient_local"] = latched_all_transient_local;
   node["topics"] = topics;
   node["topic_types"] = topic_types;
   node["services"] = services;
   node["exclude_topics"] = exclude_topics;
   node["exclude_topic_types"] = exclude_topic_types;
   node["exclude_services"] = exclude_service_events;
+  node["latched_topics"] = latched_topics;
   node["rmw_serialization_format"] = rmw_serialization_format;
   node["topic_polling_interval"] = topic_polling_interval;
   node["regex"] = regex;
   node["exclude_regex"] = exclude_regex;
+  node["latched_regex"] = latched_regex;
+  node["latched_exclude"] = latched_exclude;
   node["node_prefix"] = node_prefix;
   node["compression_mode"] = compression_mode;
   node["compression_format"] = compression_format;
@@ -78,10 +82,10 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   // Note: Please don't forget to update the test case `test_yaml_serialization_deserialization`
   // in `test_record_options.cpp` when updating the fields in RecordOptions.
   auto & [all_topics, all_services, is_discovery_disabled,
-    topics, topic_types, services,
+    latched_all_transient_local, topics, topic_types, services,
     exclude_topics, exclude_topic_types, exclude_service_events,
-    rmw_serialization_format,
-    topic_polling_interval, regex, exclude_regex, node_prefix,
+    latched_topics, rmw_serialization_format,
+    topic_polling_interval, regex, exclude_regex, latched_regex, latched_exclude, node_prefix,
     compression_mode, compression_format, compression_queue_size, compression_threads,
     compression_threads_priority, topic_qos_profile_overrides,
     include_hidden_topics, include_unpublished_topics, ignore_leaf_topics,
@@ -97,12 +101,14 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   }
 
   optional_assign<bool>(node, "is_discovery_disabled", is_discovery_disabled);
+  optional_assign<bool>(node, "latched_all_transient_local", latched_all_transient_local);
   optional_assign<std::vector<std::string>>(node, "topics", topics);
   optional_assign<std::vector<std::string>>(node, "topic_types", topic_types);
   optional_assign<std::vector<std::string>>(node, "services", services);
   optional_assign<std::vector<std::string>>(node, "exclude_topics", exclude_topics);
   optional_assign<std::vector<std::string>>(node, "exclude_topic_types", exclude_topic_types);
   optional_assign<std::vector<std::string>>(node, "exclude_services", exclude_service_events);
+  optional_assign<std::vector<std::string>>(node, "latched_topics", latched_topics);
   optional_assign<std::string>(node, "rmw_serialization_format", rmw_serialization_format);
   optional_assign<std::chrono::milliseconds>(
     node, "topic_polling_interval", topic_polling_interval);
@@ -111,6 +117,8 @@ bool convert<rosbag2_transport::RecordOptions>::decode(
   // Map exclude to the "exclude_regex" for backward compatability.
   optional_assign<std::string>(node, "exclude", exclude_regex);
   optional_assign<std::string>(node, "exclude_regex", exclude_regex);
+  optional_assign<std::string>(node, "latched_regex", latched_regex);
+  optional_assign<std::string>(node, "latched_exclude", latched_exclude);
   optional_assign<std::string>(node, "node_prefix", node_prefix);
   optional_assign<std::string>(node, "compression_mode", compression_mode);
   optional_assign<std::string>(node, "compression_format", compression_format);

@@ -252,6 +252,12 @@ public:
    */
   void add_event_callbacks(bag_events::WriterEventCallbacks & callbacks);
 
+  /**
+   * \brief Set the latched topics.
+   * \param latched_topics the vector of latched topics.
+   */
+  void set_latched_topics(const std::vector<std::string> & latched_topics);
+
 private:
   std::mutex writer_mutex_;
   std::unique_ptr<rosbag2_cpp::writer_interfaces::BaseWriterInterface> writer_impl_;

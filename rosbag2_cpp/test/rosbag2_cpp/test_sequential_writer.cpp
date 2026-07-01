@@ -150,6 +150,18 @@ TEST_F(SequentialWriterTest, topics_persist_between_close_and_open) {
   EXPECT_NO_THROW(writer_->write(test_message));
 }
 
+std::shared_ptr<rosbag2_storage::SerializedBagMessage> make_latched_test_msg()
+{
+  static uint32_t counter = 0;
+  std::string msg_content = "Latch" + std::to_string(counter++);
+  auto msg_length = msg_content.length();
+  auto message = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+  message->topic_name = "latched_topic";
+  message->serialized_data = rosbag2_storage::make_serialized_message(
+    msg_content.c_str(), msg_length);
+  return message;
+}
+
 TEST_F(
   SequentialWriterTest,
   write_uses_converters_to_convert_serialization_format_if_input_and_output_format_are_different) {
@@ -501,6 +513,117 @@ TEST_F(
   }
 }
 
+TEST_F(
+  SequentialWriterTest,
+  writer_with_cache_splits_when_storage_bagfile_size_gt_max_bagfile_size_with_latched_regex) {
+  const size_t message_count = 15;
+  const size_t max_bagfile_size = 5;
+  const auto expected_splits = message_count / max_bagfile_size;
+  // added lached message to the count
+  const size_t expected_total_written_messages = message_count - 1 + expected_splits;
+  fake_storage_size_ = 0;
+  size_t written_messages = 0;
+
+  ON_CALL(
+    *storage_,
+    write(An<const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> &>())).
+  WillByDefault(
+    [this, &written_messages]
+    (const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & msgs)
+    {
+      written_messages += msgs.size();
+      fake_storage_size_.fetch_add(static_cast<uint32_t>(msgs.size()));
+    });
+
+  ON_CALL(*storage_, get_bagfile_size).WillByDefault(
+    [this]() {
+      return fake_storage_size_.load();
+    });
+
+  ON_CALL(*storage_, get_relative_file_path).WillByDefault(
+    [this]() {
+      return fake_storage_uri_;
+    });
+
+  EXPECT_CALL(*metadata_io_, write_metadata).Times(1);
+
+  EXPECT_CALL(*storage_factory_, open_read_write(_)).Times(4);
+
+  // intercept the metadata write so we can analyze it.
+  ON_CALL(*metadata_io_, write_metadata).WillByDefault(
+    [this](const std::string &, const rosbag2_storage::BagMetadata & metadata) {
+      fake_metadata_ = metadata;
+    });
+
+  auto sequential_writer = std::make_unique<rosbag2_cpp::writers::SequentialWriter>(
+    std::move(storage_factory_), converter_factory_, std::move(metadata_io_));
+  writer_ = std::make_unique<rosbag2_cpp::Writer>(std::move(sequential_writer));
+
+  std::string rmw_format = "rmw_format";
+
+  storage_options_.max_bagfile_size = max_bagfile_size;
+  storage_options_.max_cache_size = 4000u;
+  storage_options_.snapshot_mode = false;
+
+  writer_->open(storage_options_, {rmw_format, rmw_format});
+  writer_->create_topic({0u, "test_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->create_topic({0u, "latched_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->set_latched_topics({"latched_topic"});
+
+  auto timeout = std::chrono::seconds(2);
+  for (auto i = 1u; i < message_count; ++i) {
+    if (i == 1) {
+      writer_->write(make_latched_test_msg());
+    } else {
+      writer_->write(make_test_msg());
+    }
+    // Wait for written_messages == i for each 5th message with timeout in 2 sec
+    // Need yield resources and make sure that cache_consumer had a chance to dump buffer to the
+    // storage before split is gonna occur. i.e. each 5th message.
+    auto i_latched = (i + (i - 1) / max_bagfile_size);
+    if ((i_latched % max_bagfile_size) == 0) {
+      auto start_time = std::chrono::steady_clock::now();
+      while ((i_latched != written_messages) &&
+        (std::chrono::steady_clock::now() - start_time < timeout))
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      EXPECT_EQ(i_latched, written_messages);
+    }
+    // Check on the 6th and 11 message that split happened.
+    if ((i_latched % max_bagfile_size) == 1) {
+      // i.e. fake_storage_size_ zeroed on split and then incremented in cache_consumer callback.
+      auto start_time = std::chrono::steady_clock::now();
+      while ((fake_storage_size_ != 1u) &&
+        ((std::chrono::steady_clock::now() - start_time) < timeout))
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      EXPECT_GT(fake_storage_size_, 0u) << "current message number = " << i;
+    }
+  }
+
+  writer_.reset();
+  EXPECT_EQ(written_messages, expected_total_written_messages);
+
+// metadata should be written now that the Writer was released.
+  EXPECT_EQ(
+    fake_metadata_.relative_file_paths.size(),
+    static_cast<unsigned int>(expected_splits + 1)) <<
+    "Storage should have split bagfile " << expected_splits;
+
+  int counter = 0;
+  for (const auto & path : fake_metadata_.relative_file_paths) {
+    std::stringstream ss;
+    ss << bag_base_dir_ << "_" << counter;
+
+    const auto expected_path = ss.str();
+    counter++;
+    EXPECT_EQ(expected_path, path);
+  }
+}
+
+
 TEST_F(SequentialWriterTest, do_not_use_cache_if_cache_size_is_zero) {
   const size_t counter = 1000;
   const uint64_t max_cache_size = 0;
@@ -536,6 +659,56 @@ TEST_F(SequentialWriterTest, do_not_use_cache_if_cache_size_is_zero) {
   for (auto i = 0u; i < counter; ++i) {
     writer_->write(message);
   }
+}
+
+TEST_F(SequentialWriterTest, snapshot_mode_write_on_trigger_with_latched_topics)
+{
+  storage_options_.max_bagfile_size = 0;
+  storage_options_.max_cache_size = 200;
+  storage_options_.snapshot_mode = true;
+
+  // Expect a single write call when the snapshot is triggered
+  EXPECT_CALL(
+    *storage_, write(
+      An
+      <const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> &>())
+  ).Times(1);
+
+  // intercept the metadata write so we can analyze it.
+  ON_CALL(*metadata_io_, write_metadata).WillByDefault(
+    [this](const std::string &, const rosbag2_storage::BagMetadata & metadata) {
+      fake_metadata_ = metadata;
+    });
+
+  auto sequential_writer = std::make_unique<rosbag2_cpp::writers::SequentialWriter>(
+    std::move(storage_factory_), converter_factory_, std::move(metadata_io_));
+  writer_ = std::make_unique<rosbag2_cpp::Writer>(std::move(sequential_writer));
+
+  std::string rmw_format = "rmw_format";
+
+  std::string msg_content = "Hello";
+  auto msg_length = msg_content.length();
+  auto message = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+  message->topic_name = "test_topic";
+  message->serialized_data = rosbag2_storage::make_serialized_message(
+    msg_content.c_str(), msg_length);
+
+  writer_->open(storage_options_, {rmw_format, rmw_format});
+  writer_->create_topic({0u, "test_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->create_topic({0u, "latched_topic", "test_msgs/BasicTypes", "", {}, ""});
+  writer_->set_latched_topics({"latched_topic"});
+
+  for (auto i = 0u; i < 100; ++i) {
+    if (i == 0u) {
+      writer_->write(make_latched_test_msg());
+    } else {
+      writer_->write(message);
+    }
+  }
+  writer_->take_snapshot();
+
+  writer_->close();
+  EXPECT_EQ(fake_metadata_.message_count, 41);
 }
 
 TEST_F(SequentialWriterTest, snapshot_mode_write_on_trigger)

@@ -440,6 +440,26 @@ if(BUILD_TESTING)
   endfunction()
   call_for_each_rmw_implementation(test_keyboard_controls_for_rmw_implementation)
 
+  ament_add_gmock_executable(test_record_latched_topics test/rosbag2_transport/test_record_latched_topics.cpp)
+  target_link_libraries(test_record_latched_topics rosbag2_transport ${test_msgs_TARGETS} rosbag2_test_common::rosbag2_test_common)
+  function(test_record_latched_topics_for_rmw_implementation)
+    set(rmw_implementation_env_var RMW_IMPLEMENTATION=${rmw_implementation})
+
+    # disable the following tests for connext
+    # due to slower discovery of nodes
+    set(SKIP_TEST "")
+    if(${rmw_implementation} MATCHES "rmw_connext(.*)")
+      set(SKIP_TEST "SKIP_TEST")
+    endif()
+
+    ament_add_gmock_test(test_record_latched_topics
+      TEST_NAME test_record_latched_topics${target_suffix}
+      ENV ${rmw_implementation_env_var}
+      ${SKIP_TEST}
+    )
+  endfunction()
+  call_for_each_rmw_implementation(test_record_latched_topics_for_rmw_implementation)
+
   ament_add_gmock_executable(test_record_regex test/rosbag2_transport/test_record_regex.cpp)
   target_link_libraries(test_record_regex rosbag2_transport ${test_msgs_TARGETS} rosbag2_test_common::rosbag2_test_common)
   function(test_record_regex_for_rmw_implementation)
@@ -531,6 +551,14 @@ if(BUILD_TESTING)
   target_include_directories(test_topic_filter PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/rosbag2_transport>)
   target_link_libraries(test_topic_filter
+    ${PROJECT_NAME}
+  )
+
+  ament_add_gmock(test_latched_topic_filter
+    test/rosbag2_transport/test_latched_topic_filter.cpp)
+  target_include_directories(test_latched_topic_filter PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/rosbag2_transport>)
+  target_link_libraries(test_latched_topic_filter
     ${PROJECT_NAME}
   )
 

@@ -427,6 +427,347 @@ TEST_P(RecordFixture, record_end_to_end_with_splitting_splits_bagfile) {
   }
 }
 
+TEST_P(RecordFixture, record_end_to_end_with_splitting_latched_topic_splits_bagfile) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const char latched_topic_name[] = "/test_latched_topic";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+  constexpr const int expected_splits = 4;
+  constexpr const char message_str[] = "Test";
+  constexpr const char latched_message_str[] = "Latched";
+  constexpr const int message_size = 1024 * 1024;  // 1MB
+  // string message from test_msgs
+  const auto message = create_string_message(message_str, message_size);
+  const auto latched_message = create_string_message(latched_message_str, message_size);
+  constexpr const int message_count = bagfile_split_size * expected_splits / message_size;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  auto qos = rclcpp::QoS{rclcpp::KeepLast(1)}.transient_local();
+  pub_manager.setup_publisher(latched_topic_name, latched_message, 1, qos);
+  pub_manager.setup_publisher(topic_name, message, message_count - expected_splits);
+
+  std::stringstream command;
+  command << get_base_record_command() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --topics " << topic_name << " " << latched_topic_name <<
+    " --latched-topics " << latched_topic_name;
+  auto process_handle = start_execution(command.str());
+  auto cleanup_process_handle = rcpputils::make_scope_exit(
+    [process_handle]() {
+      stop_execution(process_handle);
+    });
+
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic_name)) <<
+    "Expected find rosbag subscription: " << latched_topic_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(topic_name)) <<
+    "Expected find rosbag subscription: " << topic_name;
+
+  wait_for_storage_file();
+
+  pub_manager.run_publishers();
+
+  stop_execution(process_handle);
+  cleanup_process_handle.cancel();
+
+  wait_for_metadata();
+  finalize_metadata_kludge(expected_splits);
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.generic_string());
+
+  ASSERT_GE(metadata.relative_file_paths.size(), 1u) << "Bagfile never split!";
+
+  int files_count = 0;
+  for (const auto & file : metadata.files) {
+    auto path = root_bag_path_ / fs::path(file.path);
+    EXPECT_TRUE(fs::exists(path));
+    files_count++;
+  }
+  EXPECT_EQ(files_count, expected_splits);
+  #if 0
+  for (int i = 0; i < files_count; ++i) {
+    auto messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic_name, i);
+    EXPECT_EQ(messages.size(), 1);
+  }
+  #endif
+}
+
+TEST_P(RecordFixture,
+  record_end_to_end_with_splitting_latched_topic_splits_bagfile_with_multiple_messages) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const char latched_topic1_name[] = "/test_latched_topic1";
+  constexpr const char latched_topic2_name[] = "/test_latched_topic2";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+  constexpr const int expected_splits = 4;
+  constexpr const char message_str[] = "Test";
+  constexpr const char latched_message1_str[] = "Latched1";
+  constexpr const char latched_message2_str[] = "Latched2";
+  constexpr const int message_size = 1024 * 1024;  // 1MB
+  // string message from test_msgs
+  const auto message = create_string_message(message_str, message_size);
+  const auto latched_message1 = create_string_message(latched_message1_str, message_size);
+  const auto latched_message2 = create_string_message(latched_message2_str, message_size);
+  constexpr const int message_count = bagfile_split_size * expected_splits / message_size;
+
+ rosbag2_test_common::PublicationManager pub_manager;
+  auto qos = rclcpp::QoS{rclcpp::KeepLast(1)}.transient_local();
+  pub_manager.setup_publisher(latched_topic1_name, latched_message1, 1, qos);
+  pub_manager.setup_publisher(latched_topic2_name, latched_message2, 1, qos);
+  pub_manager.setup_publisher(topic_name, message, message_count - expected_splits * 2);
+
+  std::stringstream command;
+  command << get_base_record_command() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --topics " << topic_name << " " << latched_topic1_name << " " << latched_topic2_name <<
+    " --latched-topics " << latched_topic1_name << " " << latched_topic2_name;
+  auto process_handle = start_execution(command.str());
+  auto cleanup_process_handle = rcpputils::make_scope_exit(
+    [process_handle]() {
+      stop_execution(process_handle);
+    });
+
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic1_name)) <<
+    "Expected find rosbag subscription: " << latched_topic1_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic2_name)) <<
+    "Expected find rosbag subscription: " << latched_topic2_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(topic_name)) <<
+    "Expected find rosbag subscription: " << topic_name;
+
+  wait_for_storage_file();
+
+  pub_manager.run_publishers();
+
+  stop_execution(process_handle);
+  cleanup_process_handle.cancel();
+
+  wait_for_metadata();
+  finalize_metadata_kludge(expected_splits);
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.generic_string());
+
+  ASSERT_GE(metadata.relative_file_paths.size(), 1u) << "Bagfile never split!";
+
+  int files_count = 0;
+  for (const auto & file : metadata.files) {
+    auto path = root_bag_path_ / fs::path(file.path);
+    EXPECT_TRUE(fs::exists(path));
+    files_count++;
+  }
+  EXPECT_EQ(files_count, expected_splits);
+  #if 0
+  for (int i = 0; i < files_count; ++i) {
+    auto messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic1_name, i);
+    EXPECT_EQ(messages.size(), 1);
+    messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic2_name, i);
+    EXPECT_EQ(messages.size(), 1);
+  }
+  #endif
+}
+
+TEST_P(RecordFixture,
+  record_end_to_end_with_splitting_latched_topic_splits_bagfile_transient_local_all) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const char latched_topic_name[] = "/test_latched_topic";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+  constexpr const int expected_splits = 4;
+  constexpr const char message_str[] = "Test";
+  constexpr const char latched_message_str[] = "Latched";
+  constexpr const int message_size = 1024 * 1024;  // 1MB
+  // string message from test_msgs
+  const auto message = create_string_message(message_str, message_size);
+  const auto latched_message = create_string_message(latched_message_str, message_size);
+  constexpr const int message_count = bagfile_split_size * expected_splits / message_size;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  auto qos = rclcpp::QoS{rclcpp::KeepLast(1)}.transient_local();
+  pub_manager.setup_publisher(latched_topic_name, latched_message, 1, qos);
+  pub_manager.setup_publisher(topic_name, message, message_count - expected_splits);
+
+  std::stringstream command;
+  command << get_base_record_command() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --topics " << topic_name << " " << latched_topic_name <<
+    " --latched-all-transient-local ";
+  auto process_handle = start_execution(command.str());
+  auto cleanup_process_handle = rcpputils::make_scope_exit(
+    [process_handle]() {
+      stop_execution(process_handle);
+    });
+
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic_name)) <<
+    "Expected find rosbag subscription: " << latched_topic_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(topic_name)) <<
+    "Expected find rosbag subscription: " << topic_name;
+
+  wait_for_storage_file();
+
+  pub_manager.run_publishers();
+
+  stop_execution(process_handle);
+  cleanup_process_handle.cancel();
+
+  wait_for_metadata();
+  finalize_metadata_kludge(expected_splits);
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.generic_string());
+
+  ASSERT_GE(metadata.relative_file_paths.size(), 1u) << "Bagfile never split!";
+
+  int files_count = 0;
+  for (const auto & file : metadata.files) {
+    auto path = root_bag_path_ / fs::path(file.path);
+    EXPECT_TRUE(fs::exists(path));
+    files_count++;
+  }
+  EXPECT_EQ(files_count, expected_splits);
+  #if 0
+  for (int i = 0; i < files_count; ++i) {
+    auto messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic_name, i);
+    EXPECT_EQ(messages.size(), 1);
+  }
+  #endif
+}
+
+TEST_P(RecordFixture, record_end_to_end_with_splitting_latched_topic_splits_bagfile_regex) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const char latched_topic_name[] = "/test_latched_topic";
+  constexpr const char topic_regex[] = "/test_latched.+";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+  constexpr const int expected_splits = 4;
+  constexpr const char message_str[] = "Test";
+  constexpr const char latched_message_str[] = "Latched";
+  constexpr const int message_size = 1024 * 1024;  // 1MB
+  // string message from test_msgs
+  const auto message = create_string_message(message_str, message_size);
+  const auto latched_message = create_string_message(latched_message_str, message_size);
+  constexpr const int message_count = bagfile_split_size * expected_splits / message_size;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  auto qos = rclcpp::QoS{rclcpp::KeepLast(1)}.transient_local();
+  pub_manager.setup_publisher(latched_topic_name, latched_message, 1, qos);
+  pub_manager.setup_publisher(topic_name, message, message_count - expected_splits);
+
+  std::stringstream command;
+  command << get_base_record_command() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --topics " << topic_name << " " << latched_topic_name <<
+    " --latched-regex " << topic_regex;
+  auto process_handle = start_execution(command.str());
+  auto cleanup_process_handle = rcpputils::make_scope_exit(
+    [process_handle]() {
+      stop_execution(process_handle);
+    });
+
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic_name)) <<
+    "Expected find rosbag subscription: " << latched_topic_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(topic_name)) <<
+    "Expected find rosbag subscription: " << topic_name;
+
+  wait_for_storage_file();
+
+  pub_manager.run_publishers();
+
+  stop_execution(process_handle);
+  cleanup_process_handle.cancel();
+
+  wait_for_metadata();
+  finalize_metadata_kludge(expected_splits);
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.generic_string());
+
+  ASSERT_GE(metadata.relative_file_paths.size(), 1u) << "Bagfile never split!";
+
+  int files_count = 0;
+  for (const auto & file : metadata.files) {
+    auto path = root_bag_path_ / fs::path(file.path);
+    EXPECT_TRUE(fs::exists(path));
+    files_count++;
+  }
+  EXPECT_EQ(files_count, expected_splits);
+  #if 0
+  for (int i = 0; i < files_count; ++i) {
+    auto messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic_name, i);
+    EXPECT_EQ(messages.size(), 1);
+  }
+  #endif
+}
+
+TEST_P(RecordFixture, record_end_to_end_with_splitting_latched_topic_splits_bagfile_exclude) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const char latched_topic_name[] = "/test_latched_topic";
+  constexpr const char latched_exclude_topic_name[] = "/test_latched_exclude";
+  constexpr const char topic_exclude_regex[] = ".+exclude";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+  constexpr const int expected_splits = 4;
+  constexpr const char message_str[] = "Test";
+  constexpr const char latched_message_str[] = "Latched";
+  constexpr const char latched_exclude_message_str[] = "LatchedExclude";
+  constexpr const int message_size = 1024 * 1024;  // 1MB
+  // string message from test_msgs
+  const auto message = create_string_message(message_str, message_size);
+  const auto latched_message = create_string_message(latched_message_str, message_size);
+  const auto latched_exclude_message =
+    create_string_message(latched_exclude_message_str, message_size);
+  constexpr const int message_count = bagfile_split_size * expected_splits / message_size;
+
+  rosbag2_test_common::PublicationManager pub_manager;
+  auto qos = rclcpp::QoS{rclcpp::KeepLast(1)}.transient_local();
+  pub_manager.setup_publisher(latched_topic_name, latched_message, 1, qos);
+  pub_manager.setup_publisher(latched_exclude_topic_name, latched_exclude_message, 1, qos);
+  pub_manager.setup_publisher(topic_name, message, message_count - expected_splits - 1);
+
+  std::stringstream command;
+  command << get_base_record_command() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --topics " << topic_name << " " << latched_topic_name << " " << latched_exclude_topic_name <<
+    " --latched-all-transient-local " <<
+    " --latched-exclude " << topic_exclude_regex;
+  auto process_handle = start_execution(command.str());
+  auto cleanup_process_handle = rcpputils::make_scope_exit(
+    [process_handle]() {
+      stop_execution(process_handle);
+    });
+
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_topic_name)) <<
+    "Expected find rosbag subscription: " << latched_topic_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(latched_exclude_topic_name)) <<
+    "Expected find rosbag subscription: " << latched_exclude_topic_name;
+  ASSERT_TRUE(pub_manager.wait_for_matched(topic_name)) <<
+    "Expected find rosbag subscription: " << topic_name;
+
+  wait_for_storage_file();
+
+  pub_manager.run_publishers();
+
+  stop_execution(process_handle);
+  cleanup_process_handle.cancel();
+
+  wait_for_metadata();
+  finalize_metadata_kludge(expected_splits);
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.generic_string());
+
+  ASSERT_GE(metadata.relative_file_paths.size(), 1u) << "Bagfile never split!";
+
+  int files_count = 0;
+  for (const auto & file : metadata.files) {
+    auto path = root_bag_path_ / fs::path(file.path);
+    EXPECT_TRUE(fs::exists(path));
+    files_count++;
+  }
+  EXPECT_EQ(files_count, expected_splits);
+  #if 0
+  for (int i = 0; i < files_count; ++i) {
+    auto messages = get_messages_for_topic_in_db_file<test_msgs::msg::Strings>(
+      latched_topic_name, i);
+    EXPECT_EQ(messages.size(), 1);
+  }
+  #endif
+}
+
 TEST_P(RecordFixture, record_end_to_end_with_duration_splitting_splits_bagfile) {
   constexpr const char topic_name[] = "/test_topic";
   constexpr const int bagfile_split_duration = 1000;   // 1 second

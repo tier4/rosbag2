@@ -98,6 +98,9 @@ public:
 
   std::unordered_map<std::string, std::string> get_requested_or_available_topics();
 
+  std::vector<std::string> get_latched_topics(
+    const std::unordered_map<std::string, std::string> & topics);
+
   /// Public members for access by wrapper
   std::unordered_set<std::string> topics_warned_about_incompatibility_;
   std::shared_ptr<rosbag2_cpp::Writer> writer_;
@@ -138,6 +141,11 @@ private:
     const std::vector<rclcpp::TopicEndpointInfo> & topics_endpoint_info) const;
 
   void warn_if_new_qos_for_subscribed_topic(const std::string & topic_name);
+
+  std::unordered_map<std::string, std::string> get_transient_local_topics(
+    const std::unordered_map<std::string, std::string> & topics);
+
+  bool is_transient_local_topic(const std::string & topic_name);
 
   /// \brief Helper wrapper function to set a service response as success.
   template<typename ResponseT>
@@ -331,7 +339,18 @@ void RecorderImpl::record(const std::string & uri)
 
   serialization_format_ = record_options_.rmw_serialization_format;
   if (!record_options_.use_sim_time) {
-    subscribe_topics(get_requested_or_available_topics());
+    auto topics_to_subscribe = get_requested_or_available_topics();
+    RCLCPP_DEBUG_STREAM(
+      node->get_logger(),
+      "Topics to subscribe: " << topics_to_subscribe.size());
+    auto latched_topics = get_latched_topics(topics_to_subscribe);
+    RCLCPP_DEBUG_STREAM(
+      node->get_logger(),
+      "Latched topics: " << latched_topics.size());
+    if (!latched_topics.empty()) {
+      writer_->set_latched_topics(latched_topics);
+    }
+    subscribe_topics(topics_to_subscribe);
   }
   if (!record_options_.is_discovery_disabled) {
     start_discovery();
@@ -666,6 +685,16 @@ void RecorderImpl::topics_discovery() noexcept
           warn_if_new_qos_for_subscribed_topic(topic_and_type.first);
         }
         auto missing_topics = get_missing_topics(topics_to_subscribe);
+        RCLCPP_DEBUG_STREAM(
+          node->get_logger(),
+          "Discovered missing_topics: " << missing_topics.size());
+        auto latched_topics = get_latched_topics(missing_topics);
+        RCLCPP_DEBUG_STREAM(
+          node->get_logger(),
+          "Discovered latched_topics: " << latched_topics.size());
+        if (!latched_topics.empty()) {
+          writer_->set_latched_topics(latched_topics);
+        }
         subscribe_topics(missing_topics);
       }
       node->wait_for_graph_change(discovery_graph_event_, record_options_.topic_polling_interval);
@@ -686,6 +715,38 @@ RecorderImpl::get_requested_or_available_topics()
   auto all_topics_and_types = node->get_topic_names_and_types();
   return topic_filter_->filter_topics(all_topics_and_types);
 }
+
+std::vector<std::string>
+RecorderImpl::get_latched_topics(const std::unordered_map<std::string, std::string> & topics)
+{
+  auto transient_local_topics = get_transient_local_topics(topics);
+  RCLCPP_INFO_STREAM(
+    node->get_logger(),
+    "transient_local_topics: " << transient_local_topics.size());
+  TopicFilter topic_filter{record_options_, node->get_node_graph_interface()};
+  return topic_filter.filter_latched_topics(topics, transient_local_topics);
+}
+
+std::unordered_map<std::string, std::string>
+RecorderImpl::get_transient_local_topics(
+  const std::unordered_map<std::string, std::string> & topics)
+{
+  std::unordered_map<std::string, std::string> transient_local_topics;
+  for (const auto & topic_and_type : topics) {
+    if (is_transient_local_topic(topic_and_type.first)) {
+      transient_local_topics.emplace(topic_and_type);
+    }
+  }
+  return transient_local_topics;
+}
+
+bool RecorderImpl::is_transient_local_topic(const std::string & topic_name)
+{
+  rosbag2_storage::Rosbag2QoS subscription_qos{subscription_qos_for_topic(topic_name)};
+  return
+    subscription_qos.get_rmw_qos_profile().durability == RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+}
+
 
 std::unordered_map<std::string, std::string>
 RecorderImpl::get_missing_topics(const std::unordered_map<std::string, std::string> & all_topics)
@@ -1055,6 +1116,13 @@ std::unordered_map<std::string, std::string>
 Recorder::get_requested_or_available_topics()
 {
   return pimpl_->get_requested_or_available_topics();
+}
+
+std::vector<std::string>
+Recorder::get_latched_topics(
+  const std::unordered_map<std::string, std::string> & topics)
+{
+  return pimpl_->get_latched_topics(topics);
 }
 
 rosbag2_cpp::Writer &

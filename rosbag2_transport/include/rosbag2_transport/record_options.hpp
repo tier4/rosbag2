@@ -33,16 +33,20 @@ public:
   bool all_topics = false;
   bool all_services = false;
   bool is_discovery_disabled = false;
+  bool latched_all_transient_local = false;
   std::vector<std::string> topics;
   std::vector<std::string> topic_types;
   std::vector<std::string> services;  // service event topic
   std::vector<std::string> exclude_topics;
   std::vector<std::string> exclude_topic_types;
   std::vector<std::string> exclude_service_events;  // service event topic
+  std::vector<std::string> latched_topics;
   std::string rmw_serialization_format;
   std::chrono::milliseconds topic_polling_interval{100};
   std::string regex = "";
   std::string exclude_regex = "";
+  std::string latched_regex = "";
+  std::string latched_exclude = "";
   std::string node_prefix = "";
   /// \brief Compression mode. Valid values are "file", "message" or "" (no compression).
   /// \Note: To use compression mode "message", the underlying storage must support this parameter.

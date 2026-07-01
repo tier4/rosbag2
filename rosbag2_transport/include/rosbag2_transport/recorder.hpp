@@ -187,6 +187,10 @@ protected:
   std::unordered_map<std::string, std::string> get_requested_or_available_topics();
 
   ROSBAG2_TRANSPORT_PUBLIC
+  std::vector<std::string> get_latched_topics(
+    const std::unordered_map<std::string, std::string> & topics);
+
+  ROSBAG2_TRANSPORT_PUBLIC
   rosbag2_cpp::Writer & get_writer();
 
   ROSBAG2_TRANSPORT_PUBLIC
